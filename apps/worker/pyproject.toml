@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pharma-worker"
+version = "0.1.1"
+description = "Dramatiq worker for the Pharma Intelligence SaaS"
+requires-python = ">=3.12"
+dependencies = [
+  "dramatiq[redis]==2.2.0",
+  "pharma-api==0.1.1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.1.1",
+  "ruff==0.15.21",
+  "mypy==1.19.1"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pharma_worker"]

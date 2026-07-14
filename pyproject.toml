@@ -1,0 +1,27 @@
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers --strict-config"
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["apps/api/src", "apps/api/tests", "apps/worker/src", "apps/worker/tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "SIM", "RUF"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"apps/api/alembic/**" = ["INP001"]
+"apps/**/tests/**" = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+exclude = ["apps/api/alembic"]
+
+[[tool.mypy.overrides]]
+module = ["dramatiq.*"]
+ignore_missing_imports = true
