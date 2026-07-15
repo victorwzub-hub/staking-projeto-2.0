@@ -25,9 +25,7 @@ test("shows loading and then the API health response", async ({ page }) => {
     });
   });
 
-  const healthRequest = page.waitForRequest((request) =>
-    request.url().endsWith("/api/v1/health"),
-  );
+  const healthRequest = page.waitForRequest((request) => request.url().endsWith("/api/v1/health"));
 
   await page.goto("/");
 
