@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const localBaseUrl = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+const localApiBaseUrl = new URL("/api/v1", localBaseUrl).toString().replace(/\/$/, "");
 const listingOnly = process.argv.includes("--list");
 
 export default defineConfig({
@@ -26,6 +27,10 @@ export default defineConfig({
           url: localBaseUrl,
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,
+          env: {
+            NEXT_PUBLIC_API_BASE_URL: localApiBaseUrl,
+            NEXT_PUBLIC_API_TIMEOUT_MS: "10000",
+          },
         },
 
   projects: [

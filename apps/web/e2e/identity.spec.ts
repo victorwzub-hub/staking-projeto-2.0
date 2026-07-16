@@ -80,7 +80,11 @@ test("login establishes the application context and renders protected content", 
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByRole("heading", { name: "Olá, Owner Test" })).toBeVisible();
   await expect(page.getByText("Farmácia Teste").first()).toBeVisible();
-  await expect(page.getByText("6")).toBeVisible();
+  const permissionsMetric = page
+    .getByRole("region", { name: "Resumo da identidade" })
+    .locator("article")
+    .filter({ hasText: "Permissões efetivas" });
+  await expect(permissionsMetric.getByText("6", { exact: true })).toBeVisible();
 });
 
 test("registration displays a neutral verification response", async ({ page }) => {

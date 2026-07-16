@@ -887,7 +887,15 @@ def upgrade() -> None:
             f"user_id = {current_user} OR current_setting('app.is_platform_admin', true) = 'true'"
         ),
     )
-    _enable_rls("audit_events")
+    audit_user_expression = (
+        f"tenant_id IS NULL AND "
+        f"(actor_user_id = {current_user} OR effective_user_id = {current_user})"
+    )
+    _enable_rls(
+        "audit_events",
+        using=f"({tenant_expression}) OR ({audit_user_expression})",
+        check=f"({tenant_expression}) OR ({audit_user_expression})",
+    )
 
 
 def downgrade() -> None:

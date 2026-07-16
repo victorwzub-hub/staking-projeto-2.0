@@ -121,3 +121,86 @@ async def test_rls_blocks_cross_tenant_read_update_and_pool_context_leakage() ->
     finally:
         await app_engine.dispose()
         await admin_engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_rls_allows_only_user_scoped_global_audit_events() -> None:
+    admin_engine = create_async_engine(os.environ["TEST_ADMIN_DATABASE_URL"])
+    app_engine = create_async_engine(os.environ["TEST_DATABASE_URL"])
+    current_user_id = uuid4()
+    other_user_id = uuid4()
+    own_event_id = uuid4()
+    other_event_id = uuid4()
+    try:
+        async with admin_engine.begin() as connection:
+            for user_id in (current_user_id, other_user_id):
+                await connection.execute(
+                    text(
+                        "INSERT INTO users (id,email,normalized_email,password_hash,status,"
+                        "email_verified_at,is_platform_admin,created_at,updated_at,version) "
+                        "VALUES (:user_id,:email,:email,'not-used','active',now(),false,"
+                        "now(),now(),1)"
+                    ),
+                    {"user_id": user_id, "email": f"audit-rls-{user_id}@example.test"},
+                )
+            await connection.execute(
+                text(
+                    "INSERT INTO audit_events "
+                    "(id,actor_user_id,effective_user_id,action,category,outcome) "
+                    "VALUES (:id,:user_id,:user_id,'other.global','authorization','denied')"
+                ),
+                {"id": other_event_id, "user_id": other_user_id},
+            )
+
+        async with app_engine.connect() as connection, connection.begin():
+            await connection.execute(
+                text("SELECT set_config('app.current_user_id', :value, true)"),
+                {"value": str(current_user_id)},
+            )
+            await connection.execute(text("SELECT set_config('app.current_tenant_id', '', true)"))
+            await connection.execute(
+                text("SELECT set_config('app.is_platform_admin', 'false', true)")
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO audit_events "
+                    "(id,actor_user_id,effective_user_id,action,category,outcome) "
+                    "VALUES (:id,:user_id,:user_id,'csrf.denied','authorization','denied')"
+                ),
+                {"id": own_event_id, "user_id": current_user_id},
+            )
+            visible_ids = (
+                (await connection.execute(text("SELECT id FROM audit_events ORDER BY id")))
+                .scalars()
+                .all()
+            )
+            assert visible_ids == [own_event_id]
+
+        async with app_engine.connect() as connection:
+            transaction = await connection.begin()
+            try:
+                await connection.execute(
+                    text("SELECT set_config('app.current_user_id', :value, true)"),
+                    {"value": str(current_user_id)},
+                )
+                await connection.execute(
+                    text("SELECT set_config('app.current_tenant_id', '', true)")
+                )
+                await connection.execute(
+                    text("SELECT set_config('app.is_platform_admin', 'false', true)")
+                )
+                with pytest.raises(exc.DBAPIError):
+                    await connection.execute(
+                        text(
+                            "INSERT INTO audit_events "
+                            "(id,actor_user_id,effective_user_id,action,category,outcome) "
+                            "VALUES (:id,:user_id,:user_id,'forbidden.global',"
+                            "'authorization','denied')"
+                        ),
+                        {"id": uuid4(), "user_id": other_user_id},
+                    )
+            finally:
+                await transaction.rollback()
+    finally:
+        await app_engine.dispose()
+        await admin_engine.dispose()
