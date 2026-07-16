@@ -8,13 +8,19 @@ vi.mock("@/components/api-status", () => ({
 }));
 
 describe("HomePage", () => {
-  it("identifies the delivery as technical foundation only", () => {
+  it("describes the implemented identity and multi-tenant foundation", () => {
     render(<HomePage />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Base pronta para evoluir com segurança.",
+      "Identidade e acesso preparados para um SaaS de alta criticidade.",
     );
-    expect(screen.getByText(/Autenticação, billing, dashboards/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Os módulos analíticos de farmácia permanecem fora/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Iniciar onboarding" })).toHaveAttribute(
+      "href",
+      "/register",
+    );
     expect(screen.getByText("API status component")).toBeInTheDocument();
   });
 });

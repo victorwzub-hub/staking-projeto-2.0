@@ -11,6 +11,10 @@ _SAFE_PRODUCTION_CONFIG = {
     "database_url": "postgresql+psycopg://pharma:strong-example@db.internal:5432/pharma",
     "redis_url": "redis://cache.internal:6379/0",
     "api_cors_origins": "https://app.example.com",
+    "frontend_base_url": "https://app.example.com",
+    "session_cookie_secure": True,
+    "session_token_pepper": "0123456789abcdef0123456789abcdef",
+    "one_time_token_pepper": "abcdef0123456789abcdef0123456789",
 }
 
 

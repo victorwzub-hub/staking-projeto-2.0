@@ -1,33 +1,80 @@
 # Catálogo de variáveis de ambiente
 
-| Variável | Processo | Obrigatória | Sensível | Padrão local | Finalidade |
-|---|---|---:|---:|---|---|
-| `APP_NAME` | API/worker | não | não | `Pharma Intelligence SaaS` | Nome do serviço. |
-| `APP_ENV` | API/worker | sim em deploy | não | `development` | `development`, `test`, `staging` ou `production`. |
-| `APP_DEBUG` | API | não | não | `false` | Debug do framework; é rejeitado quando verdadeiro em produção. |
-| `APP_LOG_LEVEL` | API/worker | não | não | `INFO` | Nível de log. |
-| `API_V1_PREFIX` | API | não | não | `/api/v1` | Prefixo versionado. |
-| `API_CORS_ORIGINS` | API | sim em deploy | não | localhost e 127.0.0.1 | Lista CSV de origens permitidas. Em produção aceita somente HTTPS, sem wildcard ou loopback. |
-| `READINESS_TIMEOUT_SECONDS` | API | não | não | `2.0` | Timeout individual de dependências. |
-| `POSTGRES_DB` | Compose | sim | não | `pharma` | Banco local. |
-| `POSTGRES_USER` | Compose | sim | não | `pharma` | Usuário local. |
-| `POSTGRES_PASSWORD` | Compose | sim | **sim** | valor inseguro de desenvolvimento | Senha do banco. |
-| `POSTGRES_PORT` | Compose | não | não | `5432` | Porta publicada. |
-| `DATABASE_URL` | API/worker/Alembic | sim | **sim** | URL local | DSN `postgresql+psycopg`. Loopback, senha ausente e senha padrão são rejeitados em produção. |
-| `REDIS_URL` | API/worker | sim | potencialmente | `redis://redis:6379/0` | Cache e broker. Loopback é rejeitado em produção. |
-| `REDIS_PORT` | Compose | não | não | `6379` | Porta publicada. |
-| `NEXT_PUBLIC_API_BASE_URL` | Web/browser | sim | não | `http://localhost:8000/api/v1` | Base pública usada pelo cliente HTTP no navegador. Nunca incluir secret. |
-| `WEB_PORT` | Compose | não | não | `3000` | Porta publicada. |
-| `DRAMATIQ_PROCESSES` | Worker | não | não | `1` | Quantidade de processos Dramatiq. |
-| `DRAMATIQ_THREADS` | Worker | não | não | `4` | Threads por processo Dramatiq. |
+Nenhum valor sensível pode ser prefixado com `NEXT_PUBLIC_`. `.env.example` é exclusivo para desenvolvimento.
 
-## Regras de produção
+## Runtime e HTTP
 
-Ao usar `APP_ENV=production`, o processo falha antes de iniciar quando identifica debug ativo, credencial padrão, hosts de loopback ou CORS inseguro. Essa validação é uma proteção adicional e não substitui secret manager, TLS, revisão de infraestrutura ou políticas de rede.
+| Variável | Processo | Sensível | Finalidade |
+|---|---|---:|---|
+| `APP_NAME` | API/worker | não | Nome do serviço. |
+| `APP_ENV` | API/worker | não | `development`, `test`, `staging` ou `production`. |
+| `APP_DEBUG` | API | não | Debug; proibido em staging/produção. |
+| `APP_LOG_LEVEL` | API/worker | não | Nível de log. |
+| `API_V1_PREFIX` | API | não | Prefixo REST, padrão `/api/v1`. |
+| `API_CORS_ORIGINS` | API | não | CSV de origens exatas; sem wildcard. |
+| `FRONTEND_BASE_URL` | API/worker | não | URL absoluta usada em links de e-mail. |
+| `READINESS_TIMEOUT_SECONDS` | API | não | Timeout das dependências. |
+| `NEXT_PUBLIC_API_BASE_URL` | web/browser | não | Base pública da API. |
 
-## Regras gerais
+## PostgreSQL e Redis
 
-- Secrets reais devem vir de um secret manager no ambiente de deploy.
-- Não prefixe valores sensíveis com `NEXT_PUBLIC_`.
-- Não registre DSNs, tokens ou payloads pessoais em logs.
-- `.env.example` contém somente valores locais substituíveis.
+| Variável | Processo | Sensível | Finalidade |
+|---|---|---:|---|
+| `DATABASE_URL` | API/worker/testes | sim | DSN da role de aplicação sem `BYPASSRLS`. |
+| `MIGRATION_DATABASE_URL` | migrate | sim | DSN administrativo exclusivo para migrations. |
+| `DATABASE_APPLICATION_ROLE` | API/testes | não | Role usada pelo contexto RLS. |
+| `POSTGRES_*` | Compose | senha: sim | Provisionamento local. |
+| `REDIS_URL` | API/worker | potencialmente | Rate limiting, cache e broker. |
+
+## Senha, sessão e tokens
+
+| Variável | Sensível | Finalidade |
+|---|---:|---|
+| `PASSWORD_MIN_LENGTH` | não | Comprimento mínimo. |
+| `ARGON2_TIME_COST` | não | Custo temporal Argon2id. |
+| `ARGON2_MEMORY_COST_KIB` | não | Memória Argon2id. |
+| `ARGON2_PARALLELISM` | não | Paralelismo Argon2id. |
+| `ARGON2_HASH_LEN` | não | Comprimento do hash. |
+| `ARGON2_SALT_LEN` | não | Comprimento do salt. |
+| `SESSION_TOKEN_PEPPER` | **sim** | HMAC dos tokens de sessão. Mínimo 32 caracteres em deploy. |
+| `ONE_TIME_TOKEN_PEPPER` | **sim** | HMAC de verificação, reset e convite. |
+| `SESSION_COOKIE_NAME` | não | Nome do cookie HttpOnly. |
+| `CSRF_COOKIE_NAME` | não | Nome do cookie de duplo envio. |
+| `SESSION_COOKIE_DOMAIN` | não | Domínio opcional. |
+| `SESSION_COOKIE_SECURE` | não | Obrigatório em deploy. |
+| `SESSION_COOKIE_SAMESITE` | não | `lax`, `strict` ou `none`. |
+| `SESSION_TTL_SECONDS` | não | Vida máxima da sessão. |
+| `SESSION_IDLE_TIMEOUT_SECONDS` | não | Expiração por inatividade. |
+| `EMAIL_VERIFICATION_TTL_SECONDS` | não | Vida do token de verificação. |
+| `PASSWORD_RESET_TTL_SECONDS` | não | Vida do token de reset. |
+| `INVITATION_TTL_SECONDS` | não | Vida do convite. |
+
+## Rate limiting
+
+| Variável | Finalidade |
+|---|---|
+| `LOGIN_MAX_ATTEMPTS` | Tentativas antes do bloqueio. |
+| `LOGIN_WINDOW_SECONDS` | Janela de observação. |
+| `LOGIN_LOCKOUT_SECONDS` | Backoff inicial. |
+| `LOGIN_MAX_LOCKOUT_SECONDS` | Limite superior do backoff progressivo. |
+| `PUBLIC_AUTH_MAX_REQUESTS` | Limite de ações públicas. |
+| `PUBLIC_AUTH_WINDOW_SECONDS` | Janela das ações públicas. |
+
+## E-mail, bootstrap e retenção
+
+| Variável | Sensível | Finalidade |
+|---|---:|---|
+| `EMAIL_BACKEND` | não | `development` ou `test` nesta fase. |
+| `EMAIL_FROM_ADDRESS` | não | Remetente lógico. |
+| `EMAIL_SPOOL_DIRECTORY` | não | Diretório do adapter local. |
+| `BOOTSTRAP_ENABLED` | não | Habilitação explícita e temporária. |
+| `BOOTSTRAP_ADMIN_EMAIL` | pessoal | E-mail do primeiro platform admin. |
+| `BOOTSTRAP_ADMIN_PASSWORD` | **sim** | Senha fornecida pelo secret manager. |
+| `AUDIT_RETENTION_DAYS` | não | Política de retenção da auditoria. |
+| `SESSION_RETENTION_DAYS` | não | Retenção de sessões revogadas/expiradas. |
+| `DRAMATIQ_PROCESSES` | não | Processos do worker. |
+| `DRAMATIQ_THREADS` | não | Threads por processo. |
+
+## Guardas de deploy
+
+Em `staging` e `production`, a aplicação rejeita debug, cookies sem Secure, loopback, frontend/CORS sem HTTPS, senha local e peppers fracos/default. Esses guardas não substituem secret manager, TLS, firewall e revisão de IAM.

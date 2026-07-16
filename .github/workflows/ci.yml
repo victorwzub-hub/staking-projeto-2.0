@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, master]
 
 permissions:
   contents: read
@@ -15,6 +15,42 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: pharma_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d pharma_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_ADMIN_DATABASE_URL: postgresql+psycopg://postgres:postgres-test-only@127.0.0.1:5432/pharma_test
+      TEST_DATABASE_URL: postgresql+psycopg://pharma_app_test:app-role-test-only@127.0.0.1:5432/pharma_test
+      TEST_REDIS_URL: redis://127.0.0.1:6379/15
+      APP_ENV: test
+      DATABASE_URL: postgresql+psycopg://pharma_app_test:app-role-test-only@127.0.0.1:5432/pharma_test
+      REDIS_URL: redis://127.0.0.1:6379/15
+      SESSION_TOKEN_PEPPER: integration-session-pepper-32-characters-minimum
+      ONE_TIME_TOKEN_PEPPER: integration-token-pepper-32-characters-minimum
+      ARGON2_TIME_COST: "2"
+      ARGON2_MEMORY_COST_KIB: "19456"
+      ARGON2_PARALLELISM: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,19 +66,58 @@ jobs:
           pip install -e './apps/api[dev]'
           pip install -e './apps/worker[dev]'
       - name: Ruff
-        run: ruff check apps/api apps/worker
+        run: ruff check apps/api apps/worker scripts/prepare-integration-database.py scripts/generate-openapi.py
       - name: Ruff format
-        run: ruff format --check apps/api apps/worker
+        run: ruff format --check apps/api apps/worker scripts/prepare-integration-database.py scripts/generate-openapi.py
       - name: MyPy
         run: mypy apps/api/src apps/worker/src
-      - name: Pytest
-        run: pytest apps/api/tests apps/worker/tests
-      - name: Alembic configuration
+      - name: OpenAPI contract drift
+        run: |
+          python scripts/generate-openapi.py
+          git diff --exit-code docs/openapi/phase2-openapi.json
+      - name: Unit tests
+        run: pytest apps/api/tests apps/worker/tests -m 'not integration' --cov=pharma_api --cov=pharma_worker --cov-append
+      - name: Python dependency consistency
+        run: pip check
+      - name: Python vulnerability audit
+        run: pip-audit --progress-spinner off
+      - name: Migration upgrade-downgrade-upgrade cycle
+        run: ./scripts/test-migrations.sh
+      - name: Prepare RLS application role
+        run: python scripts/prepare-integration-database.py
+      - name: Negative tenancy and session security matrix
+        run: >-
+          pytest apps/api/tests/integration/test_context_rbac_sessions.py
+          -m "integration and negative_security"
+          --cov=pharma_api --cov-append
+      - name: PostgreSQL RLS and cross-tenant isolation
+        run: >-
+          pytest apps/api/tests/integration/test_rls_isolation.py
+          -m integration
+          --cov=pharma_api --cov-append
+      - name: PostgreSQL sessions, cookies, CSRF, and Redis rate limiting
+        run: >-
+          pytest
+          apps/api/tests/integration/test_auth_postgres_redis.py
+          apps/api/tests/integration/test_api_cookies_csrf.py
+          -m integration
+          --cov=pharma_api --cov-append
+      - name: Remaining Phase 2 vertical integration flow
+        run: >-
+          pytest apps/api/tests/integration/test_phase2_vertical_flow.py
+          -m integration
+          --cov=pharma_api --cov-append
+      - name: Coverage gate
+        run: coverage report --fail-under=65
+      - name: Alembic head and current
         working-directory: apps/api
-        run: alembic heads
+        run: |
+          alembic heads
+          alembic current
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,17 +126,19 @@ jobs:
           cache: npm
       - name: Install frontend
         run: npm ci
+      - name: npm high/critical audit gate
+        run: npm audit --audit-level=high
       - name: ESLint
         run: npm run lint
       - name: Prettier
         run: npm run format:check
       - name: TypeScript
         run: npm run typecheck
-      - name: Unit tests
-        run: npm run test
+      - name: Unit and component coverage
+        run: npm run test:coverage
       - name: Build
         env:
-          NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+          NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000/api/v1
         run: npm run build
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
@@ -75,11 +152,61 @@ jobs:
           path: apps/web/playwright-report
           retention-days: 7
 
-  compose-smoke:
+  secret-scan:
     runs-on: ubuntu-latest
-    needs: [backend, frontend]
-    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  compose-smoke:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, secret-scan]
+    timeout-minutes: 40
+    env:
+      COMPOSE_PROJECT_NAME: pharma-intelligence-ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate ephemeral E2E administrator credentials
+        shell: bash
+        run: |
+          echo "E2E_ADMIN_EMAIL=phase2-admin-${GITHUB_RUN_ID}@example.test" >> "$GITHUB_ENV"
+          echo "E2E_ADMIN_PASSWORD=$(openssl rand -base64 36 | tr -d '\n')" >> "$GITHUB_ENV"
       - name: Execute full-stack Compose smoke test
-        run: bash ./scripts/smoke-test-compose.sh
+        env:
+          KEEP_STACK: "1"
+        run: ./scripts/smoke-test-compose.sh
+      - name: Bootstrap an explicit CI-only platform administrator
+        run: |
+          docker compose exec -T \
+            -e BOOTSTRAP_ENABLED=true \
+            -e BOOTSTRAP_ADMIN_EMAIL="$E2E_ADMIN_EMAIL" \
+            -e BOOTSTRAP_ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" \
+            api pharma-bootstrap-admin
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install browser test dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Execute real-stack Playwright flow
+        env:
+          E2E_REAL_STACK: "1"
+          E2E_USE_EXISTING_SERVER: "1"
+          E2E_BASE_URL: http://127.0.0.1:3000
+        run: npm run test:e2e --workspace @pharma/web -- real-stack.spec.ts
+      - name: Print Compose diagnostics
+        if: failure()
+        run: |
+          docker compose ps || true
+          docker compose logs --no-color || true
+      - name: Stop Compose stack
+        if: always()
+        run: |
+          docker compose down --volumes --remove-orphans || true
+          rm -f .env

@@ -1,6 +1,10 @@
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers --strict-config"
 asyncio_mode = "auto"
+markers = [
+  "integration: requires real PostgreSQL and Redis",
+  "negative_security: mandatory negative tenancy and session security matrix",
+]
 
 [tool.ruff]
 target-version = "py312"
@@ -12,7 +16,7 @@ select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "SIM", "RUF"]
 ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
-"apps/api/alembic/**" = ["INP001"]
+"apps/api/alembic/**" = ["INP001", "E501", "S608"]
 "apps/**/tests/**" = ["S101"]
 
 [tool.mypy]

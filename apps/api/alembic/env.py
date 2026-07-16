@@ -8,6 +8,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from pharma_api.core.config import get_settings
+from pharma_api.infrastructure.db import all_models  # noqa: F401
 from pharma_api.infrastructure.db.base import Base
 
 config = context.config

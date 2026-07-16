@@ -1,8 +1,2 @@
-* text=auto eol=lf
-
-*.bat text eol=crlf
-*.cmd text eol=crlf
-*.ps1 text eol=crlf
-
-# Preserve o Prompt Mestre byte por byte.
+# Preserve the official Prompt Master byte-for-byte, including original CRLF endings.
 docs/specification/PROMPT_MASTER.md binary

@@ -36,7 +36,7 @@ def test_root_returns_service_metadata(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.json() == {
         "service": "Pharma Intelligence SaaS",
-        "version": "0.1.1",
+        "version": "0.2.0",
         "status": "ok",
         "documentation_url": "/docs",
         "health_url": "/api/v1/health",
@@ -49,6 +49,10 @@ def test_root_omits_documentation_url_in_production() -> None:
         database_url=("postgresql+psycopg://pharma:strong-example@db.internal:5432/pharma"),
         redis_url="redis://cache.internal:6379/0",
         api_cors_origins="https://app.example.com",
+        frontend_base_url="https://app.example.com",
+        session_cookie_secure=True,
+        session_token_pepper="0123456789abcdef0123456789abcdef",  # noqa: S106
+        one_time_token_pepper="abcdef0123456789abcdef0123456789",  # noqa: S106
         _env_file=None,
     )
 

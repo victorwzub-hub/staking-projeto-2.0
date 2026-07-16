@@ -1,6 +1,6 @@
 {
   "name": "pharma-intelligence-saas",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "workspaces": [
     "apps/web",
@@ -19,7 +19,7 @@
     "test": "npm run test --workspace @pharma/web",
     "test:e2e:list": "npm run test:e2e:list --workspace @pharma/web",
     "typecheck": "npm run typecheck --workspace @pharma/web",
-    "test:e2e": "npm run test:e2e --workspace @pharma/web"
-  },
-  "overrides": {}
+    "test:e2e": "npm run test:e2e --workspace @pharma/web",
+    "test:coverage": "npm run test:coverage --workspace @pharma/web"
+  }
 }

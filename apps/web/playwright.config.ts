@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const localBaseUrl = "http://localhost:3000";
+const localBaseUrl = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+const listingOnly = process.argv.includes("--list");
 
 export default defineConfig({
   testDir: "./e2e",
@@ -17,12 +18,15 @@ export default defineConfig({
       : undefined,
   },
 
-  webServer: {
-    command: "npm run dev",
-    url: localBaseUrl,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer:
+    process.env.E2E_USE_EXISTING_SERVER || listingOnly
+      ? undefined
+      : {
+          command: "npm run dev",
+          url: localBaseUrl,
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+        },
 
   projects: [
     {
