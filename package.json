@@ -20,5 +20,6 @@
     "test:e2e:list": "npm run test:e2e:list --workspace @pharma/web",
     "typecheck": "npm run typecheck --workspace @pharma/web",
     "test:e2e": "npm run test:e2e --workspace @pharma/web"
-  }
+  },
+  "overrides": {}
 }
