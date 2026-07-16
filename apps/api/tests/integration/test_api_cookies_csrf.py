@@ -22,7 +22,7 @@ async def test_api_uses_opaque_cookie_and_enforces_csrf(
     redis_client: Redis,
 ) -> None:
     del redis_client
-    email = f"cookie-{uuid4()}@example.test"
+    email = f"cookie-{uuid4()}@example.com"
     password = "Cookie-Integration-Password-123"  # noqa: S105
     result = await register_user(
         db_session,
@@ -46,7 +46,7 @@ async def test_api_uses_opaque_cookie_and_enforces_csrf(
     login = integration_client.post(
         "/api/v1/auth/login", json={"email": email, "password": password}
     )
-    assert login.status_code == 200
+    assert login.status_code == 200, login.text
     assert integration_settings.session_cookie_name in integration_client.cookies
     assert integration_settings.csrf_cookie_name in integration_client.cookies
     assert "opaque" not in login.text.lower()
