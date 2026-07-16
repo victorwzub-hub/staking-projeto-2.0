@@ -17,7 +17,14 @@ from pharma_api.application.email.service import (
 )
 from pharma_api.core.config import Settings
 from pharma_api.core.errors import AppError
-from pharma_api.infrastructure.db.models.identity import SecurityEvent, Session, User, UserProfile
+from pharma_api.infrastructure.db.models.identity import (
+    EmailVerificationToken,
+    PasswordResetToken,
+    SecurityEvent,
+    Session,
+    User,
+    UserProfile,
+)
 
 
 def _auth_context(profile: UserProfile | None = None) -> AuthContext:
@@ -58,6 +65,15 @@ def test_auth_context_exposes_only_server_authorized_scope() -> None:
     assert auth.tenant_id == auth.session.active_tenant_id
     assert auth.company_id == auth.session.active_company_id
     assert auth.branch_id == auth.session.active_branch_id
+
+
+@pytest.mark.parametrize(
+    "model",
+    [UserProfile, EmailVerificationToken, PasswordResetToken, Session],
+)
+def test_identity_dependents_reference_users_in_orm(model: type[object]) -> None:
+    user_id = model.__table__.c.user_id  # type: ignore[attr-defined]
+    assert {foreign_key.target_fullname for foreign_key in user_id.foreign_keys} == {"users.id"}
 
 
 def test_email_commands_build_safe_frontend_links_and_enqueue() -> None:

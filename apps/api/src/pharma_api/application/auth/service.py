@@ -150,8 +150,12 @@ async def register_user(
         updated_at=now,
         version=1,
     )
+    session.add(user)
+    await session.flush()
+
     profile = UserProfile(
         user_id=user.id,
+        user=user,
         display_name=display_name.strip(),
         locale="pt-BR",
         timezone="America/Sao_Paulo",
@@ -163,11 +167,12 @@ async def register_user(
     token = EmailVerificationToken(
         id=uuid4(),
         user_id=user.id,
+        user=user,
         token_hash=hash_one_time_token(raw_token, config),
         expires_at=now + timedelta(seconds=config.email_verification_ttl_seconds),
         created_at=now,
     )
-    session.add_all([user, profile, token])
+    session.add_all([profile, token])
     await _security_event(
         session,
         user_id=user.id,

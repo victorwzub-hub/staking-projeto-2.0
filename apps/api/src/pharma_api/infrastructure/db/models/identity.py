@@ -14,7 +14,7 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from pharma_api.infrastructure.db.base import (
     Base,
@@ -40,6 +40,27 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, VersionMixin, Base):
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     anonymized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    profile: Mapped[UserProfile | None] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        uselist=False,
+    )
+    email_verification_tokens: Mapped[list[EmailVerificationToken]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    password_reset_tokens: Mapped[list[PasswordResetToken]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    sessions: Mapped[list[Session]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class UserProfile(TimestampMixin, VersionMixin, Base):
@@ -51,6 +72,7 @@ class UserProfile(TimestampMixin, VersionMixin, Base):
     display_name: Mapped[str] = mapped_column(String(160), nullable=False)
     locale: Mapped[str] = mapped_column(String(16), nullable=False, default="pt-BR")
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="America/Sao_Paulo")
+    user: Mapped[User] = relationship(back_populates="profile")
 
 
 class EmailVerificationToken(UUIDPrimaryKeyMixin, Base):
@@ -65,6 +87,7 @@ class EmailVerificationToken(UUIDPrimaryKeyMixin, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    user: Mapped[User] = relationship(back_populates="email_verification_tokens")
 
 
 class PasswordResetToken(UUIDPrimaryKeyMixin, Base):
@@ -79,6 +102,7 @@ class PasswordResetToken(UUIDPrimaryKeyMixin, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    user: Mapped[User] = relationship(back_populates="password_reset_tokens")
 
 
 class Session(UUIDPrimaryKeyMixin, Base):
@@ -107,6 +131,7 @@ class Session(UUIDPrimaryKeyMixin, Base):
     revocation_reason: Mapped[str | None] = mapped_column(String(120))
     ip_hash: Mapped[str | None] = mapped_column(String(64))
     user_agent: Mapped[str | None] = mapped_column(String(512))
+    user: Mapped[User] = relationship(back_populates="sessions")
 
 
 class SecurityEvent(UUIDPrimaryKeyMixin, Base):

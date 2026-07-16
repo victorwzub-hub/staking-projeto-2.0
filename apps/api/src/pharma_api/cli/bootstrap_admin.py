@@ -48,9 +48,11 @@ async def bootstrap() -> None:
                 version=1,
             )
             session.add(user)
+            await session.flush()
             session.add(
                 UserProfile(
                     user_id=user.id,
+                    user=user,
                     display_name="Platform Administrator",
                     locale="pt-BR",
                     timezone="America/Sao_Paulo",
