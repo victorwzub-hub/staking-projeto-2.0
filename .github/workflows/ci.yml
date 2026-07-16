@@ -82,7 +82,7 @@ jobs:
       - name: Python vulnerability audit
         run: pip-audit --progress-spinner off
       - name: Migration upgrade-downgrade-upgrade cycle
-        run: ./scripts/test-migrations.sh
+        run: bash ./scripts/test-migrations.sh
       - name: Prepare RLS application role
         run: python scripts/prepare-integration-database.py
       - name: Negative tenancy and session security matrix
@@ -161,6 +161,8 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_COMMENTS: "false"
 
   compose-smoke:
     runs-on: ubuntu-latest
@@ -178,7 +180,7 @@ jobs:
       - name: Execute full-stack Compose smoke test
         env:
           KEEP_STACK: "1"
-        run: ./scripts/smoke-test-compose.sh
+        run: bash ./scripts/smoke-test-compose.sh
       - name: Bootstrap an explicit CI-only platform administrator
         run: |
           docker compose exec -T \

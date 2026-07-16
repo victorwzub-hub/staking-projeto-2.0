@@ -1,2 +1,3 @@
 # Preserve the official Prompt Master byte-for-byte, including original CRLF endings.
 docs/specification/PROMPT_MASTER.md binary
+*.sh text eol=lf
