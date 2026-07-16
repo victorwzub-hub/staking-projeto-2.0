@@ -14,7 +14,8 @@ Nenhum valor sensível pode ser prefixado com `NEXT_PUBLIC_`. `.env.example` é 
 | `API_CORS_ORIGINS` | API | não | CSV de origens exatas; sem wildcard. |
 | `FRONTEND_BASE_URL` | API/worker | não | URL absoluta usada em links de e-mail. |
 | `READINESS_TIMEOUT_SECONDS` | API | não | Timeout das dependências. |
-| `NEXT_PUBLIC_API_BASE_URL` | web/browser | não | Base pública da API. |
+| `NEXT_PUBLIC_API_BASE_URL` | web/browser | não | Base pública da API, incorporada no build do Next.js. |
+| `NEXT_PUBLIC_API_TIMEOUT_MS` | web/browser | não | Timeout global das chamadas da API em milissegundos; padrão `10000`. |
 
 ## PostgreSQL e Redis
 
@@ -78,3 +79,20 @@ Nenhum valor sensível pode ser prefixado com `NEXT_PUBLIC_`. `.env.example` é 
 ## Guardas de deploy
 
 Em `staging` e `production`, a aplicação rejeita debug, cookies sem Secure, loopback, frontend/CORS sem HTTPS, senha local e peppers fracos/default. Esses guardas não substituem secret manager, TLS, firewall e revisão de IAM.
+
+
+## Variáveis públicas do frontend
+
+`NEXT_PUBLIC_API_BASE_URL` e `NEXT_PUBLIC_API_TIMEOUT_MS` são incorporadas ao bundle durante o build do Next.js. Alterar esses valores no Railway exige um novo build/deploy do serviço web; reiniciar um artefato já construído não altera o bundle entregue ao navegador.
+
+No staging Railway, configure exatamente:
+
+```text
+Web build:
+NEXT_PUBLIC_API_BASE_URL=https://<api-publica>/api/v1
+NEXT_PUBLIC_API_TIMEOUT_MS=10000
+
+API runtime:
+API_CORS_ORIGINS=https://<web-publico>
+FRONTEND_BASE_URL=https://<web-publico>
+```

@@ -50,15 +50,20 @@ describe("ApiStatus", () => {
   });
 
   it("shows an unavailable state and retries the real request", async () => {
-    mockedApiRequest.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({
-      status: "ok",
-      service: "Pharma Intelligence SaaS",
-      version: "0.1.1",
-    });
+    mockedApiRequest
+      .mockRejectedValueOnce(new Error("A solicitação excedeu o tempo limite. Tente novamente."))
+      .mockResolvedValueOnce({
+        status: "ok",
+        service: "Pharma Intelligence SaaS",
+        version: "0.1.1",
+      });
 
     render(<ApiStatus />);
 
     expect(await screen.findByRole("heading", { name: "API indisponível" })).toBeInTheDocument();
+    expect(
+      screen.getByText("A solicitação excedeu o tempo limite. Tente novamente."),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
 
     expect(await screen.findByText("API disponível")).toBeInTheDocument();

@@ -27,7 +27,9 @@ O pre-deploy precisa terminar com sucesso antes de o novo container receber trá
 ## Web
 
 - Dockerfile: `infra/docker/web.Dockerfile`;
-- `NEXT_PUBLIC_API_BASE_URL` precisa existir durante o build;
+- `NEXT_PUBLIC_API_BASE_URL=https://<api-publica>/api/v1` precisa existir durante o build;
+- `NEXT_PUBLIC_API_TIMEOUT_MS=10000` é validado e também incorporado durante o build;
+- alterar qualquer variável `NEXT_PUBLIC_*` exige novo build/deploy; apenas reiniciar o container não atualiza o bundle;
 - healthcheck: `/`;
 - `PORT` é lido pelo servidor standalone do Next.js.
 
@@ -53,13 +55,16 @@ API/worker:
 - `SESSION_COOKIE_SECURE=true`;
 - `SESSION_COOKIE_SAMESITE`;
 - `SESSION_COOKIE_DOMAIN`, quando realmente necessário;
-- `API_CORS_ORIGINS` com origem HTTPS exata;
-- `FRONTEND_BASE_URL` HTTPS;
+- `API_CORS_ORIGINS=https://<web-publico>` com a origem HTTPS exata, sem wildcard;
+- `FRONTEND_BASE_URL=https://<web-publico>`;
 - configurações de Argon2, sessão, rate limiting, e-mail e logging.
 
 Web:
 
-- `NEXT_PUBLIC_API_BASE_URL=https://<dominio-api>/api/v1`.
+- `NEXT_PUBLIC_API_BASE_URL=https://<api-publica>/api/v1`;
+- `NEXT_PUBLIC_API_TIMEOUT_MS=10000`.
+
+Esses valores são build-time. Uma alteração exige novo build do serviço web e não apenas restart.
 
 Bootstrap temporário:
 

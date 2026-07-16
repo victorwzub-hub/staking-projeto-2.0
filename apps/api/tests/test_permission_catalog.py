@@ -55,3 +55,42 @@ def test_database_protects_system_role_permissions_from_direct_mutation() -> Non
     assert "reject_system_role_permission_mutation" in source
     assert "system role permissions are immutable" in source
     assert "BEFORE INSERT OR UPDATE OR DELETE ON role_permissions" in source
+
+
+def test_downgrade_removes_all_rls_policies_before_triggers_and_tables() -> None:
+    module = _migration_module()
+    migration_path = (
+        Path(__file__).parents[1]
+        / "alembic"
+        / "versions"
+        / "20260716_0001_identity_tenancy_core.py"
+    )
+    source = migration_path.read_text()
+    downgrade_source = source[source.index("def downgrade() -> None:") :]
+
+    assert module.RLS_POLICY_TABLES == (
+        "tenants",
+        "economic_groups",
+        "companies",
+        "branches",
+        "memberships",
+        "teams",
+        "team_memberships",
+        "roles",
+        "role_permissions",
+        "role_assignments",
+        "invitations",
+        "consent_records",
+        "onboarding_progress",
+        "audit_events",
+    )
+    assert "DROP POLICY IF EXISTS" in downgrade_source
+    assert downgrade_source.index("DROP POLICY IF EXISTS") < downgrade_source.index(
+        "DROP TRIGGER IF EXISTS"
+    )
+    assert downgrade_source.rindex("DROP TRIGGER IF EXISTS") < downgrade_source.index(
+        "DROP FUNCTION IF EXISTS"
+    )
+    assert downgrade_source.index("DROP FUNCTION IF EXISTS") < downgrade_source.index(
+        "op.drop_table(table)"
+    )

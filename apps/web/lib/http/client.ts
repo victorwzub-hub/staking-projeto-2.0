@@ -35,14 +35,39 @@ async function parseError(response: Response): Promise<ApiErrorResponse | null> 
   }
 }
 
+function defaultHttpErrorMessage(status: number): string {
+  if (status === 401) return "Sua sessão expirou ou não é válida. Entre novamente.";
+  if (status >= 500) return "O serviço encontrou um erro inesperado. Tente novamente.";
+  return `A API recusou a solicitação com status ${status}.`;
+}
+
+function createRequestController(externalSignal: AbortSignal | null | undefined) {
+  const controller = new AbortController();
+  const abortFromExternal = () => controller.abort(externalSignal?.reason);
+
+  if (externalSignal?.aborted) {
+    abortFromExternal();
+  } else {
+    externalSignal?.addEventListener("abort", abortFromExternal, { once: true });
+  }
+
+  return {
+    controller,
+    detach: () => externalSignal?.removeEventListener("abort", abortFromExternal),
+  };
+}
+
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
   fetcher: typeof fetch = fetch,
 ): Promise<T> {
-  const correlationId = globalThis.crypto?.randomUUID?.() ?? `web-${Date.now()}`;
-  const method = (init.method ?? "GET").toUpperCase();
   const headers = new Headers(init.headers);
+  const correlationId =
+    headers.get("X-Correlation-ID")?.trim() ||
+    globalThis.crypto?.randomUUID?.() ||
+    `web-${Date.now()}`;
+  const method = (init.method ?? "GET").toUpperCase();
   headers.set("Accept", "application/json");
   headers.set("X-Correlation-ID", correlationId);
 
@@ -52,19 +77,51 @@ export async function apiRequest<T>(
     if (csrf) headers.set("X-CSRF-Token", csrf);
   }
 
-  const response = await fetcher(`${publicEnv.apiBaseUrl}/${path.replace(/^\//, "")}`, {
-    ...init,
-    method,
-    headers,
-    credentials: "include",
-  });
+  const { controller, detach } = createRequestController(init.signal);
+  let timedOut = false;
+  const timeoutId = globalThis.setTimeout(() => {
+    timedOut = true;
+    controller.abort(new DOMException("Request timed out", "TimeoutError"));
+  }, publicEnv.apiTimeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetcher(`${publicEnv.apiBaseUrl}/${path.replace(/^\//, "")}`, {
+      ...init,
+      method,
+      headers,
+      credentials: "include",
+      signal: controller.signal,
+    });
+  } catch {
+    if (timedOut) {
+      throw new HttpError(
+        "A solicitação excedeu o tempo limite. Tente novamente.",
+        0,
+        correlationId,
+        "request_timeout",
+      );
+    }
+    if (controller.signal.aborted) {
+      throw new HttpError("A solicitação foi cancelada.", 0, correlationId, "request_aborted");
+    }
+    throw new HttpError(
+      "Não foi possível conectar à API. Verifique sua conexão e tente novamente.",
+      0,
+      correlationId,
+      "network_error",
+    );
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+    detach();
+  }
 
   if (!response.ok) {
     const body = await parseError(response);
     throw new HttpError(
-      body?.error.message ?? `API request failed with status ${response.status}`,
+      body?.error.message ?? defaultHttpErrorMessage(response.status),
       response.status,
-      response.headers.get("X-Correlation-ID"),
+      response.headers.get("X-Correlation-ID") ?? correlationId,
       body?.error.code ?? "request_failed",
       body?.error.details ?? {},
     );

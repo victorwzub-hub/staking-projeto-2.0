@@ -138,6 +138,23 @@ ROLE_DEFINITIONS: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
 }
 
+RLS_POLICY_TABLES: tuple[str, ...] = (
+    "tenants",
+    "economic_groups",
+    "companies",
+    "branches",
+    "memberships",
+    "teams",
+    "team_memberships",
+    "roles",
+    "role_permissions",
+    "role_assignments",
+    "invitations",
+    "consent_records",
+    "onboarding_progress",
+    "audit_events",
+)
+
 
 def _uuid(kind: str, value: str) -> str:
     return str(uuid5(NAMESPACE_URL, f"pharma-intelligence:{kind}:{value}"))
@@ -874,11 +891,15 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    for table in RLS_POLICY_TABLES:
+        op.execute(f'DROP POLICY IF EXISTS "{table}_tenant_policy" ON "{table}"')
+
     op.execute("DROP TRIGGER IF EXISTS role_permissions_protect_system ON role_permissions")
-    op.execute("DROP FUNCTION IF EXISTS reject_system_role_permission_mutation()")
     op.execute("DROP TRIGGER IF EXISTS roles_protect_system ON roles")
-    op.execute("DROP FUNCTION IF EXISTS reject_system_role_mutation()")
     op.execute("DROP TRIGGER IF EXISTS audit_events_no_update_delete ON audit_events")
+
+    op.execute("DROP FUNCTION IF EXISTS reject_system_role_permission_mutation()")
+    op.execute("DROP FUNCTION IF EXISTS reject_system_role_mutation()")
     op.execute("DROP FUNCTION IF EXISTS reject_audit_event_mutation()")
 
     for table in (
