@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 
 from pharma_api.application.auth.profile import list_security_events, update_profile
-from pharma_api.application.auth.types import AuthContext
+from pharma_api.application.auth.types import AuthContext, PermissionGrant
 from pharma_api.application.email.service import (
     EmailCommand,
     enqueue_email,
@@ -55,7 +55,9 @@ def _auth_context(profile: UserProfile | None = None) -> AuthContext:
             expires_at=datetime.now(UTC) + timedelta(hours=1),
         ),
         membership=None,
-        permission_keys=frozenset({"tenant.read"}),
+        permission_grants=frozenset(
+            {PermissionGrant(key="tenant.read", scope="tenant", tenant_id=tenant_id)}
+        ),
     )
 
 

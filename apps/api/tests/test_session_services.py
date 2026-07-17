@@ -41,7 +41,7 @@ def _context() -> AuthContext:
             expires_at=now + timedelta(hours=1),
         ),
         membership=None,
-        permission_keys=frozenset(),
+        permission_grants=frozenset(),
     )
 
 

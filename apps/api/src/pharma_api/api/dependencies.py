@@ -6,13 +6,13 @@ from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import Depends, Header, Request
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharma_api.application.audit.service import AuditRecord, append_audit_event
 from pharma_api.application.auth.rate_limit import LoginRateLimiter, PublicAuthRateLimiter
 from pharma_api.application.auth.service import RequestMetadata
-from pharma_api.application.auth.types import AuthContext
+from pharma_api.application.auth.types import AuthContext, PermissionGrant
 from pharma_api.core.config import Settings, get_settings
 from pharma_api.core.errors import AppError
 from pharma_api.core.security import (
@@ -58,21 +58,27 @@ def get_request_metadata(request: Request) -> RequestMetadata:
     )
 
 
-async def _resolve_permissions(
+async def _resolve_permission_grants(
     session: AsyncSession,
     *,
     user: User,
     membership: Membership | None,
     auth_session: Session,
-) -> frozenset[str]:
+) -> frozenset[PermissionGrant]:
     if user.is_platform_admin:
         keys = await session.scalars(select(Permission.key))
-        return frozenset(keys.all())
+        return frozenset(PermissionGrant(key=key, scope="platform") for key in keys.all())
     if membership is None or auth_session.active_tenant_id is None:
         return frozenset()
 
     statement = (
-        select(Permission.key)
+        select(
+            Permission.key,
+            Role.scope,
+            RoleAssignment.tenant_id,
+            RoleAssignment.company_id,
+            RoleAssignment.branch_id,
+        )
         .join(RolePermission, RolePermission.permission_id == Permission.id)
         .join(Role, Role.id == RolePermission.role_id)
         .join(RoleAssignment, RoleAssignment.role_id == Role.id)
@@ -80,17 +86,36 @@ async def _resolve_permissions(
             RoleAssignment.membership_id == membership.id,
             RoleAssignment.tenant_id == auth_session.active_tenant_id,
             or_(
-                RoleAssignment.company_id.is_(None),
-                RoleAssignment.company_id == auth_session.active_company_id,
-            ),
-            or_(
-                RoleAssignment.branch_id.is_(None),
-                RoleAssignment.branch_id == auth_session.active_branch_id,
+                and_(
+                    Role.scope == "tenant",
+                    RoleAssignment.company_id.is_(None),
+                    RoleAssignment.branch_id.is_(None),
+                ),
+                and_(
+                    Role.scope == "company",
+                    RoleAssignment.company_id == auth_session.active_company_id,
+                    RoleAssignment.branch_id.is_(None),
+                ),
+                and_(
+                    Role.scope == "branch",
+                    RoleAssignment.company_id == auth_session.active_company_id,
+                    RoleAssignment.branch_id == auth_session.active_branch_id,
+                ),
             ),
         )
         .distinct()
     )
-    return frozenset((await session.scalars(statement)).all())
+    rows = (await session.execute(statement)).all()
+    return frozenset(
+        PermissionGrant(
+            key=key,
+            scope=scope,
+            tenant_id=tenant_id,
+            company_id=company_id,
+            branch_id=branch_id,
+        )
+        for key, scope, tenant_id, company_id, branch_id in rows
+    )
 
 
 def _record_session_security_event(
@@ -214,7 +239,7 @@ async def get_auth_context(
     if now - auth_session.last_seen_at > timedelta(minutes=1):
         auth_session.last_seen_at = now
 
-    permissions = await _resolve_permissions(
+    permission_grants = await _resolve_permission_grants(
         session,
         user=user,
         membership=membership,
@@ -225,7 +250,7 @@ async def get_auth_context(
         profile=profile,
         session=auth_session,
         membership=membership,
-        permission_keys=permissions,
+        permission_grants=permission_grants,
     )
 
 
@@ -290,7 +315,7 @@ def require_permission(
     permission_key: str,
 ) -> Callable[[CurrentAuth, Request, DBSession], Awaitable[AuthContext]]:
     async def dependency(auth: CurrentAuth, request: Request, session: DBSession) -> AuthContext:
-        if permission_key not in auth.permission_keys:
+        if not auth.has_permission(permission_key):
             await append_audit_event(
                 session,
                 AuditRecord(
