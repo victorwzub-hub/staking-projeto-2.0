@@ -40,7 +40,7 @@ wait_for_container() {
   local deadline=$((SECONDS + timeout_seconds))
   while (( SECONDS < deadline )); do
     local id state exit_code
-    id="$("${COMPOSE[@]}" ps -q "$service")"
+    id="$("${COMPOSE[@]}" ps --all --quiet "$service")"
     if [[ -n "$id" ]]; then
       state="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$id")"
       exit_code="$(docker inspect --format '{{.State.ExitCode}}' "$id")"
