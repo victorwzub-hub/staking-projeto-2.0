@@ -176,7 +176,7 @@ jobs:
       - name: Generate ephemeral E2E administrator credentials
         shell: bash
         run: |
-          echo "E2E_ADMIN_EMAIL=phase2-admin-${GITHUB_RUN_ID}@example.test" >> "$GITHUB_ENV"
+          echo "E2E_ADMIN_EMAIL=phase2-admin-${GITHUB_RUN_ID}@example.com" >> "$GITHUB_ENV"
           echo "E2E_ADMIN_PASSWORD=$(openssl rand -base64 36 | tr -d '\n')" >> "$GITHUB_ENV"
       - name: Execute full-stack Compose smoke test
         env:

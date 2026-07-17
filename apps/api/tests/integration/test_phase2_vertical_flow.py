@@ -23,7 +23,7 @@ async def test_identity_onboarding_organizations_rbac_audit_and_logout_vertical_
 ) -> None:
     del redis_client
     suffix = str(uuid4())
-    email = f"owner-{suffix}@example.test"
+    email = f"owner-{suffix}@example.com"
     password = "Phase2-Integration-Password-123"  # noqa: S105
     setup_metadata = RequestMetadata("phase2-setup", "192.0.2.30", "pytest")
 
@@ -51,7 +51,7 @@ async def test_identity_onboarding_organizations_rbac_audit_and_logout_vertical_
     login = integration_client.post(
         "/api/v1/auth/login", json={"email": email, "password": password}
     )
-    assert login.status_code == 200
+    assert login.status_code == 200, login.text
     assert login.json()["onboarding_required"] is True
     csrf = integration_client.cookies[integration_settings.csrf_cookie_name]
     headers = {"X-CSRF-Token": csrf, "X-Correlation-ID": f"phase2-{suffix}"}

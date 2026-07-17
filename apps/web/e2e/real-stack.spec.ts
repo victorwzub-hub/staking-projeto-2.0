@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const realStack = process.env.E2E_REAL_STACK === "1";
-const email = process.env.E2E_ADMIN_EMAIL ?? "phase2-admin@example.test";
+const email = process.env.E2E_ADMIN_EMAIL ?? "phase2-admin@example.com";
 const password = process.env.E2E_ADMIN_PASSWORD ?? "Phase2-Only-Strong-Password-123";
 
 test.describe("real Docker Compose identity stack", () => {
