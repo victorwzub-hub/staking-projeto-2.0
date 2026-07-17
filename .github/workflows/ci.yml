@@ -201,7 +201,7 @@ jobs:
         env:
           E2E_REAL_STACK: "1"
           E2E_USE_EXISTING_SERVER: "1"
-          E2E_BASE_URL: http://127.0.0.1:3000
+          E2E_BASE_URL: http://localhost:3000
         run: npm run test:e2e --workspace @pharma/web -- real-stack.spec.ts
       - name: Print Compose diagnostics
         if: failure()
