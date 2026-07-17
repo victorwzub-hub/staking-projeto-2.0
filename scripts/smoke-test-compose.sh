@@ -34,7 +34,10 @@ command -v curl >/dev/null 2>&1 || { echo "curl is required." >&2; exit 127; }
 if [[ ! -f .env ]]; then cp .env.example .env; CREATED_ENV=1; fi
 
 wait_for_container() {
-  local service=$1 expected=$2 timeout_seconds=${3:-240} deadline=$((SECONDS + timeout_seconds))
+  local service=$1
+  local expected=$2
+  local timeout_seconds=${3:-240}
+  local deadline=$((SECONDS + timeout_seconds))
   while (( SECONDS < deadline )); do
     local id state exit_code
     id="$("${COMPOSE[@]}" ps -q "$service")"
@@ -53,7 +56,9 @@ wait_for_container() {
 }
 
 wait_for_http_200() {
-  local url=$1 timeout_seconds=${2:-180} deadline=$((SECONDS + timeout_seconds))
+  local url=$1
+  local timeout_seconds=${2:-180}
+  local deadline=$((SECONDS + timeout_seconds))
   while (( SECONDS < deadline )); do
     if curl --silent --show-error --fail --max-time 5 "$url" >/dev/null; then return 0; fi
     sleep 2
@@ -62,7 +67,9 @@ wait_for_http_200() {
 }
 
 wait_for_redis_key() {
-  local key=$1 timeout_seconds=${2:-60} deadline=$((SECONDS + timeout_seconds))
+  local key=$1
+  local timeout_seconds=${2:-60}
+  local deadline=$((SECONDS + timeout_seconds))
   while (( SECONDS < deadline )); do
     if [[ "$("${COMPOSE[@]}" exec -T redis redis-cli GET "$key" | tr -d '\r')" == "ok" ]]; then return 0; fi
     sleep 1
