@@ -15,4 +15,6 @@ id = "generic-api-key"
   ]
   paths = [
     '''^apps/api/tests/(?:test_config|test_security|test_application|test_session_services)\.py$''',
+    # Historical source patch containing the same deterministic test fixtures.
+    '''^pharma-intelligence-saas-phase2-[a-f0-9]+\.patch$''',
   ]
