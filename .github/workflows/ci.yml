@@ -87,7 +87,9 @@ jobs:
         run: python scripts/prepare-integration-database.py
       - name: Negative tenancy and session security matrix
         run: >-
-          pytest apps/api/tests/integration/test_context_rbac_sessions.py
+          pytest
+          apps/api/tests/integration/test_context_rbac_sessions.py
+          apps/api/tests/integration/test_scoped_authorization_matrix.py
           -m "integration and negative_security"
           --cov=pharma_api --cov-append
       - name: PostgreSQL RLS and cross-tenant isolation

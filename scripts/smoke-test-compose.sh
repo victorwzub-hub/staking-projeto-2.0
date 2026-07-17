@@ -117,7 +117,7 @@ curl --silent --show-error --fail "http://127.0.0.1:${API_PORT:-8000}/api/v1/rea
 # Verify migrations can be executed repeatedly under the advisory lock.
 "${COMPOSE[@]}" run --rm migrate
 "${COMPOSE[@]}" run --rm migrate
-"${COMPOSE[@]}" exec -T api alembic -c /app/alembic.ini current | grep --quiet '20260716_0001'
+"${COMPOSE[@]}" exec -T api alembic -c /app/alembic.ini current | grep --quiet '20260717_0002'
 
 # Prove the worker consumes a real Redis-backed Dramatiq task.
 probe="compose-$(date +%s)"
