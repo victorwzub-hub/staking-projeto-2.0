@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, field_validator
+from sqlalchemy.exc import IntegrityError
 
 from pharma_api.core.config import Settings
 from pharma_api.core.errors import AppError
@@ -76,6 +78,30 @@ def test_global_app_error_handler() -> None:
     assert response.status_code == 409
     assert response.json() == {
         "error": {"code": "test_error", "message": "Expected failure", "details": {}}
+    }
+
+
+def test_pending_invitation_race_preserves_conflict_contract() -> None:
+    app: FastAPI = create_app()
+
+    @app.post("/test-pending-invitation-race")
+    async def test_pending_invitation_race() -> None:
+        original = RuntimeError("unique violation")
+        original.diag = SimpleNamespace(  # type: ignore[attr-defined]
+            constraint_name="uq_invitations_pending_tenant_email"
+        )
+        raise IntegrityError("INSERT INTO invitations", {}, original)
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.post("/test-pending-invitation-race")
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "error": {
+            "code": "invitation_already_pending",
+            "message": "An active invitation already exists for this email",
+            "details": None,
+        }
     }
 
 

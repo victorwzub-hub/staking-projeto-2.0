@@ -14,6 +14,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -34,6 +35,13 @@ class Invitation(UUIDPrimaryKeyMixin, TimestampMixin, VersionMixin, Base):
         ),
         Index("ix_invitations_tenant_email", "tenant_id", "normalized_email"),
         Index("ix_invitations_expires", "expires_at"),
+        Index(
+            "uq_invitations_pending_tenant_email",
+            "tenant_id",
+            "normalized_email",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
         ForeignKeyConstraint(
             ["tenant_id", "company_id"],
             ["companies.tenant_id", "companies.id"],
