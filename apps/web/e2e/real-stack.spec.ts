@@ -57,7 +57,7 @@ test.describe("real Docker Compose identity stack", () => {
     await expect(page.getByText(`Filial E2E ${suffix}`)).toBeVisible();
 
     await page.getByRole("button", { name: "Sair" }).click();
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/\/login\?next=%2Fapp%2Fbranches$/);
     await page.goto("/app");
     await expect(page).toHaveURL(/\/login\?next=/);
   });
