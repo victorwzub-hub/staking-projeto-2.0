@@ -7,9 +7,22 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharma_api.application.audit.service import AuditRecord, append_audit_event
-from pharma_api.application.auth.types import AuthContext
+from pharma_api.application.auth.authorization import (
+    require_resource_permission,
+    require_tenant_context,
+    require_tenant_wide_permission,
+)
+from pharma_api.application.auth.scope_filters import (
+    membership_visibility_filter,
+    role_assignment_visibility_filter,
+)
+from pharma_api.application.auth.types import AuthContext, AuthorizationTarget
 from pharma_api.application.email.service import EmailCommand, invitation_email
-from pharma_api.application.rbac.service import role_permission_keys
+from pharma_api.application.rbac.service import (
+    resolve_role_target,
+    validate_inviter_authority,
+    validate_role_delegation,
+)
 from pharma_api.core.config import Settings, get_settings
 from pharma_api.core.errors import AppError
 from pharma_api.core.security import generate_token, hash_one_time_token, normalize_email
@@ -47,9 +60,8 @@ async def update_tenant(
     expected_version: int,
     correlation_id: str | None,
 ) -> Tenant:
-    tenant = await session.scalar(
-        select(Tenant).where(Tenant.id == auth.tenant_id).with_for_update()
-    )
+    tenant_id = require_tenant_wide_permission(auth, "tenant.update")
+    tenant = await session.scalar(select(Tenant).where(Tenant.id == tenant_id).with_for_update())
     if tenant is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)
     if tenant.version != expected_version:
@@ -84,13 +96,10 @@ async def create_economic_group(
     name: str,
     correlation_id: str | None,
 ) -> EconomicGroup:
-    if auth.tenant_id is None:
-        raise AppError(
-            code="tenant_context_required", message="Tenant context required", status_code=400
-        )
+    tenant_id = require_tenant_wide_permission(auth, "company.create")
     group = EconomicGroup(
         id=uuid4(),
-        tenant_id=auth.tenant_id,
+        tenant_id=tenant_id,
         name=name,
         status="active",
         version=1,
@@ -104,7 +113,7 @@ async def create_economic_group(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             resource_type="economic_group",
             resource_id=str(group.id),
             correlation_id=correlation_id,
@@ -123,22 +132,19 @@ async def create_company(
     economic_group_id: UUID | None,
     correlation_id: str | None,
 ) -> Company:
-    if auth.tenant_id is None:
-        raise AppError(
-            code="tenant_context_required", message="Tenant context required", status_code=400
-        )
+    tenant_id = require_tenant_wide_permission(auth, "company.create")
     if economic_group_id is not None:
         group = await session.scalar(
             select(EconomicGroup).where(
                 EconomicGroup.id == economic_group_id,
-                EconomicGroup.tenant_id == auth.tenant_id,
+                EconomicGroup.tenant_id == tenant_id,
             )
         )
         if group is None:
             raise AppError(code="not_found", message="Resource not found", status_code=404)
     company = Company(
         id=uuid4(),
-        tenant_id=auth.tenant_id,
+        tenant_id=tenant_id,
         economic_group_id=economic_group_id,
         legal_name=legal_name,
         trade_name=trade_name,
@@ -155,7 +161,7 @@ async def create_company(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             resource_type="company",
             resource_id=str(company.id),
             correlation_id=correlation_id,
@@ -174,14 +180,21 @@ async def update_company(
     status: str | None,
     expected_version: int,
     correlation_id: str | None,
+    permission_key: str = "company.update",
 ) -> Company:
+    tenant_id = require_tenant_context(auth)
     company = await session.scalar(
         select(Company)
-        .where(Company.id == company_id, Company.tenant_id == auth.tenant_id)
+        .where(Company.id == company_id, Company.tenant_id == tenant_id)
         .with_for_update()
     )
     if company is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)
+    require_resource_permission(
+        auth,
+        permission_key,
+        AuthorizationTarget(tenant_id=tenant_id, company_id=company.id),
+    )
     if company.version != expected_version:
         raise AppError(code="version_conflict", message="Resource was modified", status_code=409)
     changed: list[str] = []
@@ -202,7 +215,8 @@ async def update_company(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
+            company_id=company.id,
             resource_type="company",
             resource_id=str(company.id),
             correlation_id=correlation_id,
@@ -221,14 +235,20 @@ async def create_branch(
     slug: str,
     correlation_id: str | None,
 ) -> Branch:
+    tenant_id = require_tenant_context(auth)
     company = await session.scalar(
-        select(Company).where(Company.id == company_id, Company.tenant_id == auth.tenant_id)
+        select(Company).where(Company.id == company_id, Company.tenant_id == tenant_id)
     )
     if company is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)
+    require_resource_permission(
+        auth,
+        "branch.create",
+        AuthorizationTarget(tenant_id=tenant_id, company_id=company.id),
+    )
     branch = Branch(
         id=uuid4(),
-        tenant_id=company.tenant_id,
+        tenant_id=tenant_id,
         company_id=company.id,
         name=name,
         slug=slug,
@@ -244,7 +264,7 @@ async def create_branch(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             company_id=company.id,
             resource_type="branch",
             resource_id=str(branch.id),
@@ -263,14 +283,25 @@ async def update_branch(
     status: str | None,
     expected_version: int,
     correlation_id: str | None,
+    permission_key: str = "branch.update",
 ) -> Branch:
+    tenant_id = require_tenant_context(auth)
     branch = await session.scalar(
         select(Branch)
-        .where(Branch.id == branch_id, Branch.tenant_id == auth.tenant_id)
+        .where(Branch.id == branch_id, Branch.tenant_id == tenant_id)
         .with_for_update()
     )
     if branch is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)
+    require_resource_permission(
+        auth,
+        permission_key,
+        AuthorizationTarget(
+            tenant_id=tenant_id,
+            company_id=branch.company_id,
+            branch_id=branch.id,
+        ),
+    )
     if branch.version != expected_version:
         raise AppError(code="version_conflict", message="Resource was modified", status_code=409)
     changed: list[str] = []
@@ -289,7 +320,7 @@ async def update_branch(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             company_id=branch.company_id,
             branch_id=branch.id,
             resource_type="branch",
@@ -302,24 +333,29 @@ async def update_branch(
 
 
 async def list_memberships(session: AsyncSession, auth: AuthContext) -> list[dict[str, object]]:
-    if auth.tenant_id is None:
+    tenant_id = auth.tenant_id
+    if tenant_id is None:
         return []
     rows = (
         await session.execute(
             select(Membership, User, UserProfile)
             .join(User, User.id == Membership.user_id)
             .join(UserProfile, UserProfile.user_id == User.id)
-            .where(Membership.tenant_id == auth.tenant_id)
+            .where(membership_visibility_filter(auth, "user.read"))
             .order_by(UserProfile.display_name)
         )
     ).all()
+    assignment_filter = role_assignment_visibility_filter(auth, "user.read")
     result: list[dict[str, object]] = []
     for membership, user, profile in rows:
         role_slugs = (
             await session.scalars(
                 select(Role.slug)
                 .join(RoleAssignment, RoleAssignment.role_id == Role.id)
-                .where(RoleAssignment.membership_id == membership.id)
+                .where(
+                    RoleAssignment.membership_id == membership.id,
+                    assignment_filter,
+                )
             )
         ).all()
         result.append(
@@ -332,6 +368,7 @@ async def list_memberships(session: AsyncSession, auth: AuthContext) -> list[dic
                 "status": membership.status,
                 "title": membership.title,
                 "roles": sorted(role_slugs),
+                "version": membership.version,
             }
         )
     return result
@@ -346,9 +383,10 @@ async def update_membership_status(
     expected_version: int,
     correlation_id: str | None,
 ) -> Membership:
+    tenant_id = require_tenant_wide_permission(auth, "membership.manage")
     membership = await session.scalar(
         select(Membership)
-        .where(Membership.id == membership_id, Membership.tenant_id == auth.tenant_id)
+        .where(Membership.id == membership_id, Membership.tenant_id == tenant_id)
         .with_for_update()
     )
     if membership is None:
@@ -374,7 +412,7 @@ async def update_membership_status(
                     .select_from(RoleAssignment)
                     .join(Membership, Membership.id == RoleAssignment.membership_id)
                     .where(
-                        RoleAssignment.tenant_id == auth.tenant_id,
+                        RoleAssignment.tenant_id == tenant_id,
                         RoleAssignment.role_id == owner_role.id,
                         Membership.status == "active",
                     )
@@ -397,7 +435,7 @@ async def update_membership_status(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             resource_type="membership",
             resource_id=str(membership.id),
             correlation_id=correlation_id,
@@ -416,11 +454,8 @@ async def create_team(
     description: str | None,
     correlation_id: str | None,
 ) -> Team:
-    if auth.tenant_id is None:
-        raise AppError(
-            code="tenant_context_required", message="Tenant context required", status_code=400
-        )
-    team = Team(id=uuid4(), tenant_id=auth.tenant_id, name=name, description=description, version=1)
+    tenant_id = require_tenant_wide_permission(auth, "team.create")
+    team = Team(id=uuid4(), tenant_id=tenant_id, name=name, description=description, version=1)
     session.add(team)
     await append_audit_event(
         session,
@@ -430,7 +465,7 @@ async def create_team(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             resource_type="team",
             resource_id=str(team.id),
             correlation_id=correlation_id,
@@ -447,20 +482,27 @@ async def add_team_member(
     membership_id: UUID,
     correlation_id: str | None,
 ) -> TeamMembership:
-    team = await session.scalar(
-        select(Team).where(Team.id == team_id, Team.tenant_id == auth.tenant_id)
-    )
+    tenant_id = require_tenant_wide_permission(auth, "team.update")
+    team = await session.scalar(select(Team).where(Team.id == team_id, Team.tenant_id == tenant_id))
     membership = await session.scalar(
         select(Membership).where(
             Membership.id == membership_id,
-            Membership.tenant_id == auth.tenant_id,
+            Membership.tenant_id == tenant_id,
         )
     )
     if team is None or membership is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)
+    existing = await session.scalar(
+        select(TeamMembership).where(
+            TeamMembership.team_id == team.id,
+            TeamMembership.membership_id == membership.id,
+        )
+    )
+    if existing is not None:
+        return existing
     link = TeamMembership(
         id=uuid4(),
-        tenant_id=team.tenant_id,
+        tenant_id=tenant_id,
         team_id=team.id,
         membership_id=membership.id,
     )
@@ -473,7 +515,7 @@ async def add_team_member(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             resource_type="team",
             resource_id=str(team.id),
             correlation_id=correlation_id,
@@ -495,64 +537,34 @@ async def create_invitation(
     settings: Settings | None = None,
 ) -> tuple[Invitation, EmailCommand]:
     config = settings or get_settings()
-    if auth.tenant_id is None:
-        raise AppError(
-            code="tenant_context_required", message="Tenant context required", status_code=400
-        )
+    tenant_id = require_tenant_context(auth)
     role = await session.scalar(
         select(Role).where(
             Role.id == role_id,
-            (Role.tenant_id == auth.tenant_id) | (Role.tenant_id.is_(None)),
+            (Role.tenant_id == tenant_id) | (Role.tenant_id.is_(None)),
         )
     )
     if role is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)
-    delegated = await role_permission_keys(session, role.id)
-    if role.scope == "platform" or not delegated.issubset(auth.permission_keys):
-        raise AppError(
-            code="role_not_delegable", message="Role cannot be delegated", status_code=403
-        )
-    if role.scope == "tenant" and (company_id is not None or branch_id is not None):
-        raise AppError(
-            code="invalid_role_scope",
-            message="Tenant roles cannot be constrained to company or branch",
-            status_code=400,
-        )
-    if role.scope in {"company", "branch"} and company_id is None:
-        raise AppError(
-            code="company_scope_required", message="Company scope is required", status_code=400
-        )
-    if role.scope == "branch" and branch_id is None:
-        raise AppError(
-            code="branch_scope_required", message="Branch scope is required", status_code=400
-        )
-    if role.scope == "company" and branch_id is not None:
-        raise AppError(
-            code="invalid_role_scope",
-            message="Company roles cannot be constrained to a branch",
-            status_code=400,
-        )
-    if company_id is not None:
-        company = await session.scalar(
-            select(Company).where(Company.id == company_id, Company.tenant_id == auth.tenant_id)
-        )
-        if company is None:
-            raise AppError(code="not_found", message="Resource not found", status_code=404)
-    if branch_id is not None:
-        branch = await session.scalar(
-            select(Branch).where(
-                Branch.id == branch_id,
-                Branch.tenant_id == auth.tenant_id,
-                Branch.company_id == company_id,
-            )
-        )
-        if branch is None:
-            raise AppError(code="not_found", message="Resource not found", status_code=404)
+    target = await resolve_role_target(
+        session,
+        tenant_id=tenant_id,
+        role=role,
+        company_id=company_id,
+        branch_id=branch_id,
+    )
+    await validate_role_delegation(
+        session,
+        auth=auth,
+        role=role,
+        target=target,
+        authority_permission="user.invite",
+    )
 
     normalized_email = normalize_email(email)
     pending = await session.scalar(
         select(Invitation).where(
-            Invitation.tenant_id == auth.tenant_id,
+            Invitation.tenant_id == tenant_id,
             Invitation.normalized_email == normalized_email,
             Invitation.status == "pending",
             Invitation.expires_at > datetime.now(UTC),
@@ -569,7 +581,7 @@ async def create_invitation(
     raw_token = generate_token()
     invitation = Invitation(
         id=uuid4(),
-        tenant_id=auth.tenant_id,
+        tenant_id=tenant_id,
         normalized_email=normalized_email,
         token_hash=hash_one_time_token(raw_token, config),
         role_id=role.id,
@@ -589,7 +601,7 @@ async def create_invitation(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             company_id=company_id,
             branch_id=branch_id,
             resource_type="invitation",
@@ -641,6 +653,32 @@ async def accept_invitation(
             tenant_id=invitation.tenant_id,
             is_platform_admin=auth.user.is_platform_admin,
         ),
+    )
+    role = await session.scalar(
+        select(Role).where(
+            Role.id == invitation.role_id,
+            (Role.tenant_id == invitation.tenant_id) | (Role.tenant_id.is_(None)),
+        )
+    )
+    if role is None:
+        raise AppError(
+            code="invalid_or_expired_invitation",
+            message="The invitation is invalid or expired",
+            status_code=400,
+        )
+    target = await resolve_role_target(
+        session,
+        tenant_id=invitation.tenant_id,
+        role=role,
+        company_id=invitation.company_id,
+        branch_id=invitation.branch_id,
+    )
+    await validate_inviter_authority(
+        session,
+        user_id=invitation.created_by_user_id,
+        tenant_id=invitation.tenant_id,
+        role=role,
+        target=target,
     )
     membership = await session.scalar(
         select(Membership).where(
@@ -721,9 +759,10 @@ async def update_economic_group(
     expected_version: int,
     correlation_id: str | None,
 ) -> EconomicGroup:
+    tenant_id = require_tenant_wide_permission(auth, "company.update")
     group = await session.scalar(
         select(EconomicGroup)
-        .where(EconomicGroup.id == group_id, EconomicGroup.tenant_id == auth.tenant_id)
+        .where(EconomicGroup.id == group_id, EconomicGroup.tenant_id == tenant_id)
         .with_for_update()
     )
     if group is None:
@@ -746,7 +785,7 @@ async def update_economic_group(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             resource_type="economic_group",
             resource_id=str(group.id),
             correlation_id=correlation_id,
@@ -773,6 +812,7 @@ async def archive_company(
         status="archived",
         expected_version=expected_version,
         correlation_id=correlation_id,
+        permission_key="company.delete",
     )
     await append_audit_event(
         session,
@@ -782,7 +822,8 @@ async def archive_company(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=company.tenant_id,
+            company_id=company.id,
             resource_type="company",
             resource_id=str(company.id),
             correlation_id=correlation_id,
@@ -807,6 +848,7 @@ async def archive_branch(
         status="archived",
         expected_version=expected_version,
         correlation_id=correlation_id,
+        permission_key="branch.delete",
     )
     await append_audit_event(
         session,
@@ -816,7 +858,7 @@ async def archive_branch(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=branch.tenant_id,
             company_id=branch.company_id,
             branch_id=branch.id,
             resource_type="branch",
@@ -837,8 +879,9 @@ async def update_team(
     expected_version: int,
     correlation_id: str | None,
 ) -> Team:
+    tenant_id = require_tenant_wide_permission(auth, "team.update")
     team = await session.scalar(
-        select(Team).where(Team.id == team_id, Team.tenant_id == auth.tenant_id).with_for_update()
+        select(Team).where(Team.id == team_id, Team.tenant_id == tenant_id).with_for_update()
     )
     if team is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)
@@ -860,7 +903,7 @@ async def update_team(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             resource_type="team",
             resource_id=str(team.id),
             correlation_id=correlation_id,
@@ -877,8 +920,9 @@ async def delete_team(
     team_id: UUID,
     correlation_id: str | None,
 ) -> None:
+    tenant_id = require_tenant_wide_permission(auth, "team.delete")
     team = await session.scalar(
-        select(Team).where(Team.id == team_id, Team.tenant_id == auth.tenant_id).with_for_update()
+        select(Team).where(Team.id == team_id, Team.tenant_id == tenant_id).with_for_update()
     )
     if team is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)
@@ -891,7 +935,7 @@ async def delete_team(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             resource_type="team",
             resource_id=str(team.id),
             correlation_id=correlation_id,
@@ -907,11 +951,12 @@ async def remove_team_member(
     membership_id: UUID,
     correlation_id: str | None,
 ) -> None:
+    tenant_id = require_tenant_wide_permission(auth, "team.update")
     link = await session.scalar(
         select(TeamMembership).where(
             TeamMembership.team_id == team_id,
             TeamMembership.membership_id == membership_id,
-            TeamMembership.tenant_id == auth.tenant_id,
+            TeamMembership.tenant_id == tenant_id,
         )
     )
     if link is None:
@@ -925,7 +970,7 @@ async def remove_team_member(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
             resource_type="team",
             resource_id=str(team_id),
             correlation_id=correlation_id,
@@ -941,13 +986,36 @@ async def revoke_invitation_record(
     invitation_id: UUID,
     correlation_id: str | None,
 ) -> Invitation:
+    tenant_id = require_tenant_context(auth)
     invitation = await session.scalar(
         select(Invitation)
-        .where(Invitation.id == invitation_id, Invitation.tenant_id == auth.tenant_id)
+        .where(Invitation.id == invitation_id, Invitation.tenant_id == tenant_id)
         .with_for_update()
     )
     if invitation is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)
+    role = await session.scalar(
+        select(Role).where(
+            Role.id == invitation.role_id,
+            (Role.tenant_id == tenant_id) | (Role.tenant_id.is_(None)),
+        )
+    )
+    if role is None:
+        raise AppError(code="not_found", message="Resource not found", status_code=404)
+    target = await resolve_role_target(
+        session,
+        tenant_id=tenant_id,
+        role=role,
+        company_id=invitation.company_id,
+        branch_id=invitation.branch_id,
+    )
+    await validate_role_delegation(
+        session,
+        auth=auth,
+        role=role,
+        target=target,
+        authority_permission="user.invite",
+    )
     if invitation.status == "accepted":
         raise AppError(
             code="invitation_already_accepted",
@@ -966,7 +1034,9 @@ async def revoke_invitation_record(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
+            company_id=invitation.company_id,
+            branch_id=invitation.branch_id,
             resource_type="invitation",
             resource_id=str(invitation.id),
             correlation_id=correlation_id,
@@ -984,13 +1054,36 @@ async def resend_invitation(
     settings: Settings | None = None,
 ) -> tuple[Invitation, EmailCommand]:
     config = settings or get_settings()
+    tenant_id = require_tenant_context(auth)
     invitation = await session.scalar(
         select(Invitation)
-        .where(Invitation.id == invitation_id, Invitation.tenant_id == auth.tenant_id)
+        .where(Invitation.id == invitation_id, Invitation.tenant_id == tenant_id)
         .with_for_update()
     )
     if invitation is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)
+    role = await session.scalar(
+        select(Role).where(
+            Role.id == invitation.role_id,
+            (Role.tenant_id == tenant_id) | (Role.tenant_id.is_(None)),
+        )
+    )
+    if role is None:
+        raise AppError(code="not_found", message="Resource not found", status_code=404)
+    target = await resolve_role_target(
+        session,
+        tenant_id=tenant_id,
+        role=role,
+        company_id=invitation.company_id,
+        branch_id=invitation.branch_id,
+    )
+    await validate_role_delegation(
+        session,
+        auth=auth,
+        role=role,
+        target=target,
+        authority_permission="user.invite",
+    )
     if invitation.status == "accepted":
         raise AppError(
             code="invitation_already_accepted",
@@ -1004,6 +1097,7 @@ async def resend_invitation(
     invitation.expires_at = now + timedelta(seconds=config.invitation_ttl_seconds)
     invitation.revoked_at = None
     invitation.version += 1
+    invitation.created_by_user_id = auth.user.id
     await append_audit_event(
         session,
         AuditRecord(
@@ -1012,7 +1106,9 @@ async def resend_invitation(
             outcome="success",
             actor_user_id=auth.user.id,
             effective_user_id=auth.user.id,
-            tenant_id=auth.tenant_id,
+            tenant_id=tenant_id,
+            company_id=invitation.company_id,
+            branch_id=invitation.branch_id,
             resource_type="invitation",
             resource_id=str(invitation.id),
             correlation_id=correlation_id,

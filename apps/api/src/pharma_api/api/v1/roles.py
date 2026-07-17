@@ -10,7 +10,9 @@ from pharma_api.api.dependencies import (
     CSRFProtectedAuth,
     DBSession,
     require_permission,
+    require_tenant_permission,
 )
+from pharma_api.application.auth.scope_filters import role_assignment_visibility_filter
 from pharma_api.application.auth.types import AuthContext
 from pharma_api.application.rbac.service import (
     assign_role,
@@ -32,9 +34,9 @@ from pharma_api.schemas.rbac import (
 
 router = APIRouter(prefix="/roles", tags=["roles"])
 Reader = Annotated[AuthContext, Depends(require_permission("role.read"))]
-Creator = Annotated[AuthContext, Depends(require_permission("role.create"))]
-Updater = Annotated[AuthContext, Depends(require_permission("role.update"))]
-Deleter = Annotated[AuthContext, Depends(require_permission("role.delete"))]
+Creator = Annotated[AuthContext, Depends(require_tenant_permission("role.create"))]
+Updater = Annotated[AuthContext, Depends(require_tenant_permission("role.update"))]
+Deleter = Annotated[AuthContext, Depends(require_tenant_permission("role.delete"))]
 Assigner = Annotated[AuthContext, Depends(require_permission("role.assign"))]
 
 
@@ -107,7 +109,7 @@ async def patch_role(
         expected_version=payload.expected_version,
         correlation_id=request.state.correlation_id,
     )
-    roles = dict((item.id, permissions) for item, permissions in await list_roles(session, auth))
+    roles = {item.id: permissions for item, permissions in await list_roles(session, auth)}
     return RoleResponse(
         id=role.id,
         tenant_id=role.tenant_id,
@@ -144,7 +146,7 @@ async def get_role_assignments(
     auth: Reader,
     membership_id: UUID | None = None,
 ) -> list[RoleAssignmentResponse]:
-    statement = select(RoleAssignment).where(RoleAssignment.tenant_id == auth.tenant_id)
+    statement = select(RoleAssignment).where(role_assignment_visibility_filter(auth, "role.read"))
     if membership_id is not None:
         statement = statement.where(RoleAssignment.membership_id == membership_id)
     assignments = (await session.scalars(statement.order_by(RoleAssignment.created_at))).all()

@@ -342,6 +342,39 @@ def require_permission(
     return dependency
 
 
+def require_tenant_permission(
+    permission_key: str,
+) -> Callable[[CurrentAuth, Request, DBSession], Awaitable[AuthContext]]:
+    async def dependency(auth: CurrentAuth, request: Request, session: DBSession) -> AuthContext:
+        if auth.tenant_id is not None and auth.has_tenant_wide_permission(
+            permission_key, auth.tenant_id
+        ):
+            return auth
+        await append_audit_event(
+            session,
+            AuditRecord(
+                action="authorization.denied",
+                category="authorization",
+                outcome="denied",
+                actor_user_id=auth.user.id,
+                effective_user_id=auth.user.id,
+                tenant_id=auth.tenant_id,
+                company_id=auth.company_id,
+                branch_id=auth.branch_id,
+                correlation_id=request.state.correlation_id,
+                metadata={"permission": permission_key, "required_scope": "tenant"},
+            ),
+        )
+        await session.commit()
+        raise AppError(
+            code="forbidden",
+            message="You do not have permission to perform this action",
+            status_code=403,
+        )
+
+    return dependency
+
+
 async def get_login_rate_limiter() -> LoginRateLimiter:
     return LoginRateLimiter(get_redis_client())
 

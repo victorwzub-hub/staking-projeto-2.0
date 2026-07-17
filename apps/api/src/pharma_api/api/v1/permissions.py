@@ -16,6 +16,11 @@ Reader = Annotated[AuthContext, Depends(require_permission("role.read"))]
 
 @router.get("", response_model=list[PermissionResponse])
 async def get_permissions(session: DBSession, auth: Reader) -> list[PermissionResponse]:
-    del auth
-    permissions = (await session.scalars(select(Permission).order_by(Permission.key))).all()
+    permissions = (
+        await session.scalars(
+            select(Permission)
+            .where(Permission.key.in_(auth.permission_keys))
+            .order_by(Permission.key)
+        )
+    ).all()
     return [PermissionResponse.model_validate(permission) for permission in permissions]

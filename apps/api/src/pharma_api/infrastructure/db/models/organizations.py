@@ -85,6 +85,7 @@ class Branch(UUIDPrimaryKeyMixin, TimestampMixin, VersionMixin, Base):
     __table_args__ = (
         UniqueConstraint("tenant_id", "company_id", "slug", name="uq_branches_company_slug"),
         UniqueConstraint("tenant_id", "id", name="uq_branches_tenant_id_id"),
+        UniqueConstraint("tenant_id", "company_id", "id", name="uq_branches_tenant_company_id"),
         ForeignKeyConstraint(
             ["tenant_id", "company_id"],
             ["companies.tenant_id", "companies.id"],

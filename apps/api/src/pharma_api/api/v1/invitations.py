@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 
 from pharma_api.api.dependencies import CSRFProtectedAuth, DBSession, require_permission
+from pharma_api.application.auth.scope_filters import invitation_visibility_filter
 from pharma_api.application.auth.types import AuthContext
 from pharma_api.application.email.service import EmailCommand, enqueue_email
 from pharma_api.application.organizations.service import (
@@ -42,7 +43,7 @@ async def list_invitations(session: DBSession, auth: Reader) -> list[InvitationR
     invitations = (
         await session.scalars(
             select(Invitation)
-            .where(Invitation.tenant_id == auth.tenant_id)
+            .where(invitation_visibility_filter(auth, "user.read"))
             .order_by(Invitation.created_at.desc())
         )
     ).all()

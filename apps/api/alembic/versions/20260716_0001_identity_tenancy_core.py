@@ -85,7 +85,6 @@ ROLE_DEFINITIONS: dict[str, tuple[str, tuple[str, ...]]] = {
             "branch.update",
             "branch.delete",
             "user.read",
-            "team.read",
             "role.read",
             "audit.read",
             "context.switch",
@@ -100,7 +99,6 @@ ROLE_DEFINITIONS: dict[str, tuple[str, tuple[str, ...]]] = {
             "branch.read",
             "branch.update",
             "user.read",
-            "team.read",
             "audit.read",
             "context.switch",
             "session.manage",
@@ -319,6 +317,7 @@ def upgrade() -> None:
         ),
         sa.UniqueConstraint("tenant_id", "company_id", "slug", name="uq_branches_company_slug"),
         sa.UniqueConstraint("tenant_id", "id", name="uq_branches_tenant_id_id"),
+        sa.UniqueConstraint("tenant_id", "company_id", "id", name="uq_branches_tenant_company_id"),
     )
     op.create_index("ix_branches_tenant_company", "branches", ["tenant_id", "company_id"])
 
@@ -471,8 +470,8 @@ def upgrade() -> None:
             name="fk_role_assignments_company_same_tenant",
         ),
         sa.ForeignKeyConstraint(
-            ["tenant_id", "branch_id"],
-            ["branches.tenant_id", "branches.id"],
+            ["tenant_id", "company_id", "branch_id"],
+            ["branches.tenant_id", "branches.company_id", "branches.id"],
             ondelete="CASCADE",
             name="fk_role_assignments_branch_same_tenant",
         ),
@@ -576,8 +575,8 @@ def upgrade() -> None:
             name="fk_invitations_company_same_tenant",
         ),
         sa.ForeignKeyConstraint(
-            ["tenant_id", "branch_id"],
-            ["branches.tenant_id", "branches.id"],
+            ["tenant_id", "company_id", "branch_id"],
+            ["branches.tenant_id", "branches.company_id", "branches.id"],
             ondelete="CASCADE",
             name="fk_invitations_branch_same_tenant",
         ),
@@ -658,6 +657,50 @@ def upgrade() -> None:
         "ix_audit_events_actor_created", "audit_events", ["actor_user_id", "created_at"]
     )
     op.create_index("ix_audit_events_resource", "audit_events", ["resource_type", "resource_id"])
+
+    op.execute(
+        """
+        CREATE FUNCTION validate_scoped_role_reference() RETURNS trigger AS $$
+        DECLARE
+          selected_scope text;
+          selected_tenant uuid;
+        BEGIN
+          SELECT scope, tenant_id INTO selected_scope, selected_tenant
+          FROM roles WHERE id = NEW.role_id;
+          IF selected_scope IS NULL THEN
+            RAISE EXCEPTION 'role does not exist';
+          END IF;
+          IF selected_scope = 'platform' THEN
+            RAISE EXCEPTION 'platform roles cannot be tenant assigned';
+          END IF;
+          IF selected_tenant IS NOT NULL AND selected_tenant <> NEW.tenant_id THEN
+            RAISE EXCEPTION 'tenant role belongs to another tenant';
+          END IF;
+          IF selected_scope = 'tenant' AND
+             (NEW.company_id IS NOT NULL OR NEW.branch_id IS NOT NULL) THEN
+            RAISE EXCEPTION 'tenant role cannot carry company or branch scope';
+          ELSIF selected_scope = 'company' AND
+                (NEW.company_id IS NULL OR NEW.branch_id IS NOT NULL) THEN
+            RAISE EXCEPTION 'company role requires company scope only';
+          ELSIF selected_scope = 'branch' AND
+                (NEW.company_id IS NULL OR NEW.branch_id IS NULL) THEN
+            RAISE EXCEPTION 'branch role requires company and branch scope';
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+    )
+    op.execute(
+        "CREATE TRIGGER role_assignments_validate_scope "
+        "BEFORE INSERT OR UPDATE OF role_id, tenant_id, company_id, branch_id "
+        "ON role_assignments FOR EACH ROW EXECUTE FUNCTION validate_scoped_role_reference()"
+    )
+    op.execute(
+        "CREATE TRIGGER invitations_validate_scope "
+        "BEFORE INSERT OR UPDATE OF role_id, tenant_id, company_id, branch_id "
+        "ON invitations FOR EACH ROW EXECUTE FUNCTION validate_scoped_role_reference()"
+    )
 
     op.execute(
         """
@@ -903,10 +946,13 @@ def downgrade() -> None:
         op.execute(f'DROP POLICY IF EXISTS "{table}_tenant_policy" ON "{table}"')
 
     op.execute("DROP TRIGGER IF EXISTS role_permissions_protect_system ON role_permissions")
+    op.execute("DROP TRIGGER IF EXISTS invitations_validate_scope ON invitations")
+    op.execute("DROP TRIGGER IF EXISTS role_assignments_validate_scope ON role_assignments")
     op.execute("DROP TRIGGER IF EXISTS roles_protect_system ON roles")
     op.execute("DROP TRIGGER IF EXISTS audit_events_no_update_delete ON audit_events")
 
     op.execute("DROP FUNCTION IF EXISTS reject_system_role_permission_mutation()")
+    op.execute("DROP FUNCTION IF EXISTS validate_scoped_role_reference()")
     op.execute("DROP FUNCTION IF EXISTS reject_system_role_mutation()")
     op.execute("DROP FUNCTION IF EXISTS reject_audit_event_mutation()")
 

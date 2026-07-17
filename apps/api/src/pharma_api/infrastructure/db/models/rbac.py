@@ -106,8 +106,8 @@ class RoleAssignment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             name="fk_role_assignments_company_same_tenant",
         ),
         ForeignKeyConstraint(
-            ["tenant_id", "branch_id"],
-            ["branches.tenant_id", "branches.id"],
+            ["tenant_id", "company_id", "branch_id"],
+            ["branches.tenant_id", "branches.company_id", "branches.id"],
             ondelete="CASCADE",
             name="fk_role_assignments_branch_same_tenant",
         ),

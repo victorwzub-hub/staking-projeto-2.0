@@ -6,11 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 
-from pharma_api.api.dependencies import (
-    CSRFProtectedAuth,
-    DBSession,
-    require_permission,
-)
+from pharma_api.api.dependencies import CSRFProtectedAuth, DBSession, require_permission
+from pharma_api.application.auth.scope_filters import branch_visibility_filter
 from pharma_api.application.auth.types import AuthContext
 from pharma_api.application.organizations.service import (
     archive_branch,
@@ -38,7 +35,7 @@ Deleter = Annotated[AuthContext, Depends(require_permission("branch.delete"))]
 async def list_branches(
     session: DBSession, auth: Reader, company_id: UUID | None = None
 ) -> list[BranchResponse]:
-    statement = select(Branch).where(Branch.tenant_id == auth.tenant_id)
+    statement = select(Branch).where(branch_visibility_filter(auth, "branch.read"))
     if company_id is not None:
         statement = statement.where(Branch.company_id == company_id)
     branches = (await session.scalars(statement.order_by(Branch.name))).all()
@@ -48,7 +45,10 @@ async def list_branches(
 @router.get("/{branch_id}", response_model=BranchResponse)
 async def get_branch(branch_id: UUID, session: DBSession, auth: Reader) -> BranchResponse:
     branch = await session.scalar(
-        select(Branch).where(Branch.id == branch_id, Branch.tenant_id == auth.tenant_id)
+        select(Branch).where(
+            Branch.id == branch_id,
+            branch_visibility_filter(auth, "branch.read"),
+        )
     )
     if branch is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)

@@ -162,3 +162,51 @@ def test_permission_keys_are_derived_without_losing_scoped_grants() -> None:
     assert len(auth.grants_for("company.read")) == 2
     assert auth.has_permission("tenant.read")
     assert not auth.has_permission("company.delete")
+
+
+def test_scope_access_preserves_company_and_branch_boundaries() -> None:
+    tenant_id = uuid4()
+    company_grant_id = uuid4()
+    branch_company_id = uuid4()
+    branch_id = uuid4()
+    auth = _auth(
+        PermissionGrant(
+            key="audit.read",
+            scope="company",
+            tenant_id=tenant_id,
+            company_id=company_grant_id,
+        ),
+        PermissionGrant(
+            key="audit.read",
+            scope="branch",
+            tenant_id=tenant_id,
+            company_id=branch_company_id,
+            branch_id=branch_id,
+        ),
+    )
+
+    access = auth.scope_access("audit.read", tenant_id)
+
+    assert access.tenant_wide is False
+    assert access.company_ids == frozenset({company_grant_id})
+    assert access.branch_company_ids == frozenset({branch_company_id})
+    assert access.branch_ids == frozenset({branch_id})
+    assert access.visible_company_ids == frozenset({company_grant_id, branch_company_id})
+
+
+def test_tenant_wide_permission_does_not_accept_child_scope_grants() -> None:
+    tenant_id = uuid4()
+    company_id = uuid4()
+    company_auth = _auth(
+        PermissionGrant(
+            key="team.read",
+            scope="company",
+            tenant_id=tenant_id,
+            company_id=company_id,
+        )
+    )
+    tenant_auth = _auth(PermissionGrant(key="team.read", scope="tenant", tenant_id=tenant_id))
+
+    assert company_auth.has_permission("team.read")
+    assert not company_auth.has_tenant_wide_permission("team.read", tenant_id)
+    assert tenant_auth.has_tenant_wide_permission("team.read", tenant_id)

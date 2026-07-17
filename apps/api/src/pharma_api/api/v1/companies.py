@@ -10,7 +10,9 @@ from pharma_api.api.dependencies import (
     CSRFProtectedAuth,
     DBSession,
     require_permission,
+    require_tenant_permission,
 )
+from pharma_api.application.auth.scope_filters import company_visibility_filter
 from pharma_api.application.auth.types import AuthContext
 from pharma_api.application.organizations.service import (
     archive_company,
@@ -29,7 +31,7 @@ from pharma_api.schemas.organizations import (
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 Reader = Annotated[AuthContext, Depends(require_permission("company.read"))]
-Creator = Annotated[AuthContext, Depends(require_permission("company.create"))]
+Creator = Annotated[AuthContext, Depends(require_tenant_permission("company.create"))]
 Writer = Annotated[AuthContext, Depends(require_permission("company.update"))]
 Deleter = Annotated[AuthContext, Depends(require_permission("company.delete"))]
 
@@ -38,7 +40,9 @@ Deleter = Annotated[AuthContext, Depends(require_permission("company.delete"))]
 async def list_companies(session: DBSession, auth: Reader) -> list[CompanyResponse]:
     companies = (
         await session.scalars(
-            select(Company).where(Company.tenant_id == auth.tenant_id).order_by(Company.trade_name)
+            select(Company)
+            .where(company_visibility_filter(auth, "company.read"))
+            .order_by(Company.trade_name)
         )
     ).all()
     return [CompanyResponse.model_validate(company) for company in companies]
@@ -47,7 +51,10 @@ async def list_companies(session: DBSession, auth: Reader) -> list[CompanyRespon
 @router.get("/{company_id}", response_model=CompanyResponse)
 async def get_company(company_id: UUID, session: DBSession, auth: Reader) -> CompanyResponse:
     company = await session.scalar(
-        select(Company).where(Company.id == company_id, Company.tenant_id == auth.tenant_id)
+        select(Company).where(
+            Company.id == company_id,
+            company_visibility_filter(auth, "company.read"),
+        )
     )
     if company is None:
         raise AppError(code="not_found", message="Resource not found", status_code=404)

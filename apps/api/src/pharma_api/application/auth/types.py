@@ -73,14 +73,15 @@ class PermissionGrant:
         if self.tenant_id != target.tenant_id:
             return False
         if target.scope == "tenant":
-            # A scoped member may read a permitted parent resource such as tenant identity.
+            # Contextual tenant identity may be read by any grant in that tenant. Tenant-wide
+            # resources must use AuthContext.has_tenant_wide_permission instead.
             return True
         if self.scope == "tenant":
             return True
         if self.company_id != target.company_id:
             return False
         if target.scope == "company":
-            # A branch-scoped grant may cover its parent company for the same permission key.
+            # A branch-scoped grant may cover its own parent company for the same key.
             return True
         if self.scope == "company":
             return True
@@ -108,6 +109,24 @@ class PermissionGrant:
         if self.scope == "company":
             return True
         return self.branch_id == target.branch_id
+
+
+@dataclass(frozen=True, slots=True)
+class PermissionScopeAccess:
+    """Materialized visibility for one permission inside one tenant."""
+
+    tenant_wide: bool
+    company_ids: frozenset[UUID]
+    branch_ids: frozenset[UUID]
+    branch_company_ids: frozenset[UUID]
+
+    @property
+    def visible_company_ids(self) -> frozenset[UUID]:
+        return self.company_ids | self.branch_company_ids
+
+    @property
+    def has_access(self) -> bool:
+        return self.tenant_wide or bool(self.company_ids) or bool(self.branch_ids)
 
 
 @dataclass(slots=True)
@@ -143,6 +162,37 @@ class AuthContext:
 
     def has_permission(self, permission_key: str) -> bool:
         return any(grant.key == permission_key for grant in self.permission_grants)
+
+    def scope_access(self, permission_key: str, tenant_id: UUID) -> PermissionScopeAccess:
+        tenant_wide = False
+        company_ids: set[UUID] = set()
+        branch_ids: set[UUID] = set()
+        branch_company_ids: set[UUID] = set()
+        for grant in self.grants_for(permission_key):
+            if grant.scope == "platform":
+                tenant_wide = True
+                continue
+            if grant.tenant_id != tenant_id:
+                continue
+            if grant.scope == "tenant":
+                tenant_wide = True
+            elif grant.scope == "company":
+                assert grant.company_id is not None
+                company_ids.add(grant.company_id)
+            else:
+                assert grant.company_id is not None
+                assert grant.branch_id is not None
+                branch_company_ids.add(grant.company_id)
+                branch_ids.add(grant.branch_id)
+        return PermissionScopeAccess(
+            tenant_wide=tenant_wide,
+            company_ids=frozenset(company_ids),
+            branch_ids=frozenset(branch_ids),
+            branch_company_ids=frozenset(branch_company_ids),
+        )
+
+    def has_tenant_wide_permission(self, permission_key: str, tenant_id: UUID) -> bool:
+        return self.scope_access(permission_key, tenant_id).tenant_wide
 
     def can_access(self, permission_key: str, target: AuthorizationTarget) -> bool:
         return any(

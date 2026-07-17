@@ -9,6 +9,7 @@ from pharma_api.api.dependencies import (
     CSRFProtectedAuth,
     DBSession,
     require_permission,
+    require_tenant_permission,
 )
 from pharma_api.application.auth.types import AuthContext
 from pharma_api.application.organizations.service import list_memberships, update_membership_status
@@ -16,7 +17,7 @@ from pharma_api.schemas.organizations import MembershipResponse, MembershipUpdat
 
 router = APIRouter(prefix="/memberships", tags=["memberships"])
 Reader = Annotated[AuthContext, Depends(require_permission("user.read"))]
-Manager = Annotated[AuthContext, Depends(require_permission("membership.manage"))]
+Manager = Annotated[AuthContext, Depends(require_tenant_permission("membership.manage"))]
 
 
 @router.get("", response_model=list[MembershipResponse])

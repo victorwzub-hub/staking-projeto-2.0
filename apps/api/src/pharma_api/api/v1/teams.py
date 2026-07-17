@@ -6,7 +6,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 
-from pharma_api.api.dependencies import CSRFProtectedAuth, DBSession, require_permission
+from pharma_api.api.dependencies import (
+    CSRFProtectedAuth,
+    DBSession,
+    require_tenant_permission,
+)
 from pharma_api.application.auth.types import AuthContext
 from pharma_api.application.organizations.service import (
     add_team_member,
@@ -27,10 +31,10 @@ from pharma_api.schemas.organizations import (
 )
 
 router = APIRouter(prefix="/teams", tags=["teams"])
-Reader = Annotated[AuthContext, Depends(require_permission("team.read"))]
-Creator = Annotated[AuthContext, Depends(require_permission("team.create"))]
-Updater = Annotated[AuthContext, Depends(require_permission("team.update"))]
-Deleter = Annotated[AuthContext, Depends(require_permission("team.delete"))]
+Reader = Annotated[AuthContext, Depends(require_tenant_permission("team.read"))]
+Creator = Annotated[AuthContext, Depends(require_tenant_permission("team.create"))]
+Updater = Annotated[AuthContext, Depends(require_tenant_permission("team.update"))]
+Deleter = Annotated[AuthContext, Depends(require_tenant_permission("team.delete"))]
 
 
 @router.get("", response_model=list[TeamResponse])

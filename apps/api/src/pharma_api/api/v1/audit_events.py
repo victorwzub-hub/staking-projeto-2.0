@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 
 from pharma_api.api.dependencies import DBSession, require_permission
+from pharma_api.application.auth.scope_filters import audit_event_visibility_filter
 from pharma_api.application.auth.types import AuthContext
 from pharma_api.infrastructure.db.models.operations import AuditEvent
 from pharma_api.schemas.audit import AuditEventResponse
@@ -23,7 +24,7 @@ async def list_audit_events(
     offset: Annotated[int, Query(ge=0)] = 0,
     action: str | None = None,
 ) -> Page[AuditEventResponse]:
-    filters = [AuditEvent.tenant_id == auth.tenant_id]
+    filters = [audit_event_visibility_filter(auth, "audit.read")]
     if action:
         filters.append(AuditEvent.action == action)
     total = await session.scalar(select(func.count()).select_from(AuditEvent).where(*filters))

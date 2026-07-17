@@ -6,7 +6,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 
-from pharma_api.api.dependencies import CSRFProtectedAuth, DBSession, require_permission
+from pharma_api.api.dependencies import (
+    CSRFProtectedAuth,
+    DBSession,
+    require_permission,
+    require_tenant_permission,
+)
+from pharma_api.application.auth.scope_filters import economic_group_visibility_filter
 from pharma_api.application.auth.types import AuthContext
 from pharma_api.application.organizations.service import (
     create_economic_group,
@@ -23,9 +29,9 @@ from pharma_api.schemas.organizations import (
 
 router = APIRouter(prefix="/economic-groups", tags=["economic-groups"])
 Reader = Annotated[AuthContext, Depends(require_permission("company.read"))]
-Creator = Annotated[AuthContext, Depends(require_permission("company.create"))]
-Writer = Annotated[AuthContext, Depends(require_permission("company.update"))]
-Deleter = Annotated[AuthContext, Depends(require_permission("company.delete"))]
+Creator = Annotated[AuthContext, Depends(require_tenant_permission("company.create"))]
+Writer = Annotated[AuthContext, Depends(require_tenant_permission("company.update"))]
+Deleter = Annotated[AuthContext, Depends(require_tenant_permission("company.delete"))]
 
 
 @router.get("", response_model=list[EconomicGroupResponse])
@@ -33,7 +39,7 @@ async def list_economic_groups(session: DBSession, auth: Reader) -> list[Economi
     groups = (
         await session.scalars(
             select(EconomicGroup)
-            .where(EconomicGroup.tenant_id == auth.tenant_id)
+            .where(economic_group_visibility_filter(auth, "company.read"))
             .order_by(EconomicGroup.name)
         )
     ).all()
