@@ -65,6 +65,16 @@ commits e branches e, por isso, foi tratada como publicada: não foi reescrita.
 - Um teste legado de savepoint foi corrigido para que a exceção alcance o contexto transacional
   e provoque rollback antes da liberação do savepoint.
 
+### Formulários web e E2E real-stack
+
+- A primeira execução remota do Compose revelou severidade média: a API criava a empresa com
+  HTTP 201, mas oito handlers React acessavam `event.currentTarget` depois de um `await`.
+  O `currentTarget` já estava nulo, interrompendo o reset do formulário e o reload da lista.
+- Cada handler agora captura o elemento `<form>` antes da operação assíncrona.
+- Uma regressão de componente comprova criação, reset e reload após a resposta assíncrona.
+- O cenário real-stack aceita `/app` nos retries após uma tentativa anterior ter concluído o
+  onboarding, evitando que a mutação válida da primeira tentativa contamine a repetição.
+
 ## Evidências do banco real
 
 O ciclo oficial foi executado em PostgreSQL 17.10:
@@ -103,8 +113,8 @@ as imagens oficiais `postgres:17-alpine` e `redis:8-alpine`.
 | OpenAPI | 48 paths, nenhum drift |
 | ESLint e Prettier | aprovados |
 | TypeScript | aprovado |
-| Vitest | 7 arquivos e 21 testes aprovados |
-| Cobertura web | 83,93% statements; 63,70% branches; 84,44% functions; 86,93% lines |
+| Vitest | 8 arquivos e 22 testes aprovados |
+| Cobertura web | 80,45% statements; 59,00% branches; 78,18% functions; 83,58% lines |
 | Next.js production build | aprovado; 30 páginas estáticas |
 | Playwright collection | 4 testes coletados |
 | Playwright real-stack local | bloqueado pelo Docker |

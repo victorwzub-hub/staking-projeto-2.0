@@ -18,7 +18,8 @@ export default function InvitationsPage() {
   const submit = useSubmit<Invitation | MessageResponse>();
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const result = await submit.run(() =>
       apiJson<Invitation>("invitations", "POST", {
         email: form.get("email"),
@@ -28,7 +29,7 @@ export default function InvitationsPage() {
       }),
     );
     if (result) {
-      event.currentTarget.reset();
+      formElement.reset();
       await invitations.reload();
     }
   }

@@ -17,7 +17,8 @@ export default function CompaniesPage() {
   const submit = useSubmit<Company>();
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const result = await submit.run(() =>
       apiJson("companies", "POST", {
         legal_name: form.get("legal_name"),
@@ -27,7 +28,7 @@ export default function CompaniesPage() {
       }),
     );
     if (result) {
-      event.currentTarget.reset();
+      formElement.reset();
       await companies.reload();
     }
   }

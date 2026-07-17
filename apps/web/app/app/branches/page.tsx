@@ -18,7 +18,8 @@ export default function BranchesPage() {
   const submit = useSubmit<Branch>();
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const result = await submit.run(() =>
       apiJson("branches", "POST", {
         company_id: form.get("company_id"),
@@ -27,7 +28,7 @@ export default function BranchesPage() {
       }),
     );
     if (result) {
-      event.currentTarget.reset();
+      formElement.reset();
       await branches.reload();
     }
   }

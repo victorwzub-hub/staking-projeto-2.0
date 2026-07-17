@@ -15,27 +15,30 @@ test.describe("real Docker Compose identity stack", () => {
     await page.getByLabel("Senha").fill(password);
     await page.getByRole("button", { name: "Entrar" }).click();
 
-    await expect(page).toHaveURL(/\/onboarding$/);
-    await expect(
-      page.getByRole("heading", { name: "Crie sua primeira organização" }),
-    ).toBeVisible();
-
     const suffix = Date.now().toString();
-    await page.getByLabel("Nome do tenant").fill(`Tenant E2E ${suffix}`);
-    await page.getByLabel("Identificador do tenant").fill(`tenant-e2e-${suffix}`);
-    await page.getByLabel("Grupo econômico (opcional)").fill(`Grupo E2E ${suffix}`);
-    await page.getByLabel("Razão social").fill(`Farmácia E2E ${suffix} Ltda`);
-    await page.getByLabel("Nome fantasia").fill(`Farmácia E2E ${suffix}`);
-    await page.getByLabel("Identificador da empresa").fill(`farmacia-e2e-${suffix}`);
-    await page.getByLabel("Primeira filial").fill(`Matriz E2E ${suffix}`);
-    await page.getByLabel("Identificador da filial").fill(`matriz-e2e-${suffix}`);
-    await page.getByLabel("Termos vigentes").selectOption({ index: 1 });
-    await page.getByLabel(/Li e aceito/).check();
-    await page.getByRole("button", { name: "Concluir onboarding" }).click();
-
+    await expect(page).toHaveURL(/\/(?:onboarding|app)$/);
+    const requiresOnboarding = new URL(page.url()).pathname === "/onboarding";
+    if (requiresOnboarding) {
+      await expect(
+        page.getByRole("heading", { name: "Crie sua primeira organização" }),
+      ).toBeVisible();
+      await page.getByLabel("Nome do tenant").fill(`Tenant E2E ${suffix}`);
+      await page.getByLabel("Identificador do tenant").fill(`tenant-e2e-${suffix}`);
+      await page.getByLabel("Grupo econômico (opcional)").fill(`Grupo E2E ${suffix}`);
+      await page.getByLabel("Razão social").fill(`Farmácia E2E ${suffix} Ltda`);
+      await page.getByLabel("Nome fantasia").fill(`Farmácia E2E ${suffix}`);
+      await page.getByLabel("Identificador da empresa").fill(`farmacia-e2e-${suffix}`);
+      await page.getByLabel("Primeira filial").fill(`Matriz E2E ${suffix}`);
+      await page.getByLabel("Identificador da filial").fill(`matriz-e2e-${suffix}`);
+      await page.getByLabel("Termos vigentes").selectOption({ index: 1 });
+      await page.getByLabel(/Li e aceito/).check();
+      await page.getByRole("button", { name: "Concluir onboarding" }).click();
+    }
     await expect(page).toHaveURL(/\/app$/);
     await expect(page.getByRole("heading", { name: /Olá,/ })).toBeVisible();
-    await expect(page.getByText(`Tenant E2E ${suffix}`).first()).toBeVisible();
+    if (requiresOnboarding) {
+      await expect(page.getByText(`Tenant E2E ${suffix}`).first()).toBeVisible();
+    }
 
     await page.getByRole("link", { name: "Empresas" }).click();
     await page.getByLabel("Razão social").fill(`Segunda Empresa ${suffix} Ltda`);
