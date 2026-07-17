@@ -45,7 +45,9 @@ test.describe("real Docker Compose identity stack", () => {
     await page.getByLabel("Nome fantasia").fill(`Segunda Empresa ${suffix}`);
     await page.getByLabel("Identificador").fill(`segunda-empresa-${suffix}`);
     await page.getByRole("button", { name: "Criar empresa" }).click();
-    await expect(page.getByText(`Segunda Empresa ${suffix}`)).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: `Segunda Empresa ${suffix}`, exact: true }),
+    ).toBeVisible();
 
     await page.getByRole("link", { name: "Filiais" }).click();
     await page.getByLabel("Empresa").selectOption({ label: `Segunda Empresa ${suffix}` });
