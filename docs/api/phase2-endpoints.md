@@ -41,6 +41,19 @@ Todos os endpoints usam `/api/v1`, schemas Pydantic, correlation ID e formato co
 
 `/platform/tenants`, `/platform/users` e `/platform/users/{id}/status` exigem `platform.admin` e auditoria. Suspensão revoga sessões ativas.
 
+## Integrações e dados canônicos (Etapa 2B)
+
+Todas as rotas abaixo usam o prefixo `/integrations`, respeitam o contexto de tenant/empresa/filial e exigem as permissões granulares `integration.*`, `data.*`, `quality.*` ou `lineage.*` indicadas no OpenAPI.
+
+- Catálogo e configuração: `/connectors`, `/credential-references`, `/sources`, `/sources/{id}/test`, `/mappings` e `/mappings/validate`;
+- ingestão: `/sources/{id}/sync` aceita `Idempotency-Key`, enquanto `/sources/{id}/upload` recebe `multipart/form-data` por streaming;
+- operação: `/batches`, `/batches/{id}`, `/cancel`, `/reprocess`, `/errors`, `/rejections`, `/quality`, `/lineage` e `/report.csv`;
+- dados brutos: `/batches/{id}/raw` e `/raw/download` exigem permissão especial e geram evento de auditoria;
+- observabilidade: `/observability` agrega execução, backlog, dead letter, volume, throughput e qualidade;
+- consumo canônico: `/canonical/products`, `/suppliers`, `/sales`, `/purchases`, `/inventory` e `/prices`, todos com paginação por cursor opaco.
+
+O artefato versionado `docs/openapi/phase2-openapi.json` é gerado diretamente da aplicação e contém os schemas completos das 76 rotas publicadas.
+
 ## Erros
 
 Respostas não revelam a existência de recurso de outro tenant. Erros de autenticação, autorização, conflito, validação e rate limit usam código estável, mensagem segura e detalhes JSON serializáveis.
