@@ -27,6 +27,29 @@ Nenhum valor sensível pode ser prefixado com `NEXT_PUBLIC_`. `.env.example` é 
 | `POSTGRES_*` | Compose | senha: sim | Provisionamento local. |
 | `REDIS_URL` | API/worker | potencialmente | Rate limiting, cache e broker. |
 
+## Object storage e integrações
+
+| Variável | Sensível | Finalidade |
+|---|---:|---|
+| `OBJECT_STORAGE_BACKEND` | não | `s3` em deploy; `filesystem` somente em teste/desenvolvimento. |
+| `OBJECT_STORAGE_ROOT` | não | Raiz do adapter filesystem local. |
+| `S3_ENDPOINT_URL` | não | Endpoint interno S3/MinIO. |
+| `S3_BUCKET` | não | Bucket privado do landing imutável. |
+| `S3_REGION` | não | Região/assinatura S3. |
+| `S3_ACCESS_KEY_ID` | sim | Identidade de workload, fornecida por secret manager. |
+| `S3_SECRET_ACCESS_KEY` | **sim** | Segredo S3; nunca usar `NEXT_PUBLIC_`. |
+| `S3_SERVER_SIDE_ENCRYPTION` | não | `AES256` (padrão) ou `aws:kms` em deploy; vazio somente no MinIO local sem KMS. |
+| `INTEGRATION_UPLOAD_MAX_BYTES` | não | Limite de upload streaming. |
+| `INTEGRATION_CHUNK_RECORDS` | não | Registros confirmados por chunk de staging. |
+| `INTEGRATION_RETENTION_DAYS` | não | Retenção mínima do landing. |
+| `INTEGRATION_LEASE_SECONDS` | não | Janela de lease/heartbeat operacional. |
+| `CONNECTOR_TIMEOUT_SECONDS` | não | Timeout máximo por chamada do conector. |
+| `MINIO_PORT` / `MINIO_CONSOLE_PORT` | não | Portas locais do Compose. |
+
+Em staging/produção, credenciais do ERP não usam variáveis de configuração da
+fonte: o banco guarda apenas URI para o secret manager. O role S3 deve acessar
+somente o bucket/prefixo do ambiente e não deve permitir leitura pública.
+
 ## Senha, sessão e tokens
 
 | Variável | Sensível | Finalidade |

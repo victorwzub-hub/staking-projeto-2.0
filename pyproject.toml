@@ -27,5 +27,6 @@ plugins = ["pydantic.mypy"]
 exclude = ["apps/api/alembic"]
 
 [[tool.mypy.overrides]]
-module = ["dramatiq.*"]
+module = ["boto3", "boto3.*", "botocore", "botocore.*", "dramatiq.*"]
 ignore_missing_imports = true
+disable_error_code = ["import-untyped"]

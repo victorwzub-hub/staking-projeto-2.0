@@ -49,7 +49,11 @@ export type Session = {
 };
 
 export type BranchContext = { id: string; name: string };
-export type CompanyContext = { id: string; name: string; branches: BranchContext[] };
+export type CompanyContext = {
+  id: string;
+  name: string;
+  branches: BranchContext[];
+};
 export type MembershipContext = {
   membership_id: string;
   tenant_id: string;
@@ -201,6 +205,12 @@ export type Page<T> = {
   offset: number;
 };
 
+export type CursorPage<T> = {
+  items: T[];
+  next_cursor: string | null;
+  limit: number;
+};
+
 export type Profile = {
   user_id: string;
   display_name: string;
@@ -238,4 +248,126 @@ export type RoleAssignment = {
   company_id: string | null;
   branch_id: string | null;
   assigned_by_user_id: string;
+};
+
+export type ConnectorType = {
+  key: string;
+  name: string;
+  version: string;
+  schema_version: string;
+  capabilities: string[];
+  authentication_types: string[];
+  supported_entities: string[];
+  status: string;
+};
+
+export type DataSource = {
+  id: string;
+  tenant_id: string;
+  company_id: string;
+  branch_id: string | null;
+  connector_key: string;
+  connector_version: string;
+  name: string;
+  dataset_type: string;
+  status: string;
+  sync_mode: string;
+  schedule_cron: string | null;
+  last_sync_at: string | null;
+  next_sync_at: string | null;
+  last_health_status: string | null;
+  last_health_at: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ImportBatch = {
+  id: string;
+  tenant_id: string;
+  company_id: string;
+  branch_id: string | null;
+  data_source_id: string;
+  parent_batch_id: string | null;
+  dataset_type: string;
+  period_start: string | null;
+  period_end: string | null;
+  state: string;
+  progress_percent: number;
+  received_records: number;
+  valid_records: number;
+  rejected_records: number;
+  duplicate_records: number;
+  cancel_requested: boolean;
+  correlation_id: string | null;
+  queued_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  version: number;
+};
+
+export type ProcessingError = {
+  id: string;
+  batch_id: string;
+  staging_record_id: string | null;
+  step_name: string;
+  entity_type: string | null;
+  field_name: string | null;
+  error_class: string;
+  error_code: string;
+  severity: string;
+  message: string;
+  retryable: boolean;
+  created_at: string;
+};
+
+export type QualityResult = {
+  id: string;
+  batch_id: string;
+  entity_type: string;
+  rule_key: string;
+  severity: string;
+  evaluated_records: number;
+  failed_records: number;
+  score: number;
+  details: Record<string, unknown>;
+  created_at: string;
+};
+
+export type MappingField = {
+  source_field: string;
+  target_entity: string;
+  target_field: string;
+  transform_type: string;
+  transform_config: Record<string, unknown>;
+  required: boolean;
+  default_value: string | null;
+};
+
+export type MappingProfile = {
+  id: string;
+  version_id: string;
+  data_source_id: string;
+  name: string;
+  dataset_type: string;
+  version_number: number;
+  status: string;
+  fields: MappingField[];
+};
+
+export type IntegrationObservability = {
+  syncs_started: number;
+  syncs_completed: number;
+  syncs_failed: number;
+  backlog: number;
+  dead_letters: number;
+  records_received: number;
+  records_valid: number;
+  records_rejected: number;
+  records_duplicate: number;
+  storage_bytes: number;
+  average_records_per_second: number | null;
+  average_quality_score: number | null;
 };

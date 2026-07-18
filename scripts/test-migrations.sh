@@ -43,6 +43,11 @@ EXPECTED_PHASE2_TABLES = {
     "terms_versions",
     "user_profiles",
     "users",
+    "canonical_products",
+    "canonical_sales",
+    "data_sources",
+    "import_batches",
+    "staging_records",
 }
 
 engine = sa.create_engine(os.environ["TEST_ADMIN_DATABASE_URL"])
@@ -64,4 +69,4 @@ alembic upgrade head
 alembic upgrade head
 current_revision="$(alembic current)"
 printf '%s\n' "$current_revision"
-grep -q "20260717_0002" <<<"$current_revision"
+grep -q "20260717_0003" <<<"$current_revision"

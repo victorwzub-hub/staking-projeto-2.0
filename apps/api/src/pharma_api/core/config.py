@@ -37,6 +37,20 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     readiness_timeout_seconds: float = Field(default=2.0, gt=0, le=30)
 
+    object_storage_backend: Literal["filesystem", "s3"] = "filesystem"
+    object_storage_root: Path = Path(".local/objects")
+    s3_endpoint_url: str | None = None
+    s3_bucket: str = "pharma-landing"
+    s3_region: str = "us-east-1"
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: SecretStr | None = None
+    s3_server_side_encryption: Literal["AES256", "aws:kms"] | None = "AES256"
+    integration_upload_max_bytes: int = Field(default=104_857_600, ge=1_048_576)
+    integration_chunk_records: int = Field(default=1_000, ge=100, le=50_000)
+    integration_retention_days: int = Field(default=90, ge=7, le=3_650)
+    integration_lease_seconds: int = Field(default=300, ge=30, le=3_600)
+    connector_timeout_seconds: int = Field(default=60, ge=5, le=900)
+
     password_min_length: int = Field(default=12, ge=10, le=128)
     argon2_time_cost: int = Field(default=3, ge=2, le=10)
     argon2_memory_cost_kib: int = Field(default=65_536, ge=19_456, le=1_048_576)
@@ -117,6 +131,30 @@ class Settings(BaseSettings):
             raise ValueError("FRONTEND_BASE_URL must be an absolute HTTP(S) URL")
         return candidate
 
+    @field_validator("s3_endpoint_url")
+    @classmethod
+    def validate_s3_endpoint(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        candidate = value.strip().rstrip("/")
+        parsed = urlsplit(candidate)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("S3_ENDPOINT_URL must be an absolute HTTP(S) URL")
+        return candidate
+
+    @field_validator("s3_server_side_encryption", mode="before")
+    @classmethod
+    def normalize_s3_server_side_encryption(cls, value: object) -> object:
+        if isinstance(value, str):
+            candidate = value.strip()
+            if not candidate:
+                return None
+            if candidate.casefold() == "aes256":
+                return "AES256"
+            if candidate.casefold() == "aws:kms":
+                return "aws:kms"
+        return value
+
     @field_validator("session_cookie_name", "csrf_cookie_name")
     @classmethod
     def validate_cookie_name(cls, value: str) -> str:
@@ -140,6 +178,10 @@ class Settings(BaseSettings):
             errors.append("APP_DEBUG must be false in deployed environments")
         if not self.session_cookie_secure:
             errors.append("SESSION_COOKIE_SECURE must be true in deployed environments")
+        if self.object_storage_backend != "s3":
+            errors.append("OBJECT_STORAGE_BACKEND must be s3 in deployed environments")
+        if self.s3_server_side_encryption is None:
+            errors.append("S3_SERVER_SIDE_ENCRYPTION must be enabled in deployed environments")
 
         database = urlsplit(self.database_url)
         if database.hostname in _LOCAL_HOSTS:

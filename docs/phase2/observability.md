@@ -12,6 +12,13 @@
 - health e readiness separados;
 - diagnósticos de Compose impressos em falha.
 
+- estatísticas persistidas por etapa de integração (bytes, duração, registros/s e qualidade);
+- resumo RBAC-scoped em `GET /api/v1/integrations/observability`;
+- eventos de lote/outbox, retries e dead letters correlacionáveis sem payload sensível.
+
+O painel, alertas e SLOs da plataforma de dados estão em
+[`data-platform.md`](data-platform.md#observabilidade-e-alertas).
+
 ## Métricas operacionais
 
 No Railway, CPU, memória, reinícios e rede são providos pela plataforma. Contagens e latências de negócio são derivadas dos campos estruturados dos logs (`event`, `status_code`, `duration_ms`, `outcome`) sem PII em labels. Antes de produção, devem ser configurados painéis e alertas para:

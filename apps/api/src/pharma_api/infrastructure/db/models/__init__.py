@@ -1,3 +1,5 @@
+# Import the Phase 2B modules so SQLAlchemy and Alembic always receive complete metadata.
+from pharma_api.infrastructure.db.models.canonical import *  # noqa: F403
 from pharma_api.infrastructure.db.models.identity import (
     AuthenticationAttempt,
     EmailVerificationToken,
@@ -7,6 +9,7 @@ from pharma_api.infrastructure.db.models.identity import (
     User,
     UserProfile,
 )
+from pharma_api.infrastructure.db.models.integration import *  # noqa: F403
 from pharma_api.infrastructure.db.models.operations import (
     AuditEvent,
     ConsentRecord,

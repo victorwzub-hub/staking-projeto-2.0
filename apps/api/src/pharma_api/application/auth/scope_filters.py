@@ -7,6 +7,7 @@ from sqlalchemy import and_, exists, false, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
 from pharma_api.application.auth.types import AuthContext
+from pharma_api.infrastructure.db.models.integration import DataSource, ImportBatch
 from pharma_api.infrastructure.db.models.operations import AuditEvent, Invitation
 from pharma_api.infrastructure.db.models.organizations import (
     Branch,
@@ -15,6 +16,45 @@ from pharma_api.infrastructure.db.models.organizations import (
     Membership,
 )
 from pharma_api.infrastructure.db.models.rbac import Role, RoleAssignment
+
+
+def integration_source_visibility_filter(
+    auth: AuthContext, permission_key: str
+) -> ColumnElement[bool]:
+    """Keep company-wide integrations hidden from branch-only grants."""
+    tenant_id = _tenant_id(auth)
+    if tenant_id is None:
+        return _expression(false())
+    access = auth.scope_access(permission_key, tenant_id)
+    if access.tenant_wide:
+        return _expression(DataSource.tenant_id == tenant_id)
+    predicates: list[ColumnElement[bool]] = []
+    if access.company_ids:
+        predicates.append(_expression(DataSource.company_id.in_(access.company_ids)))
+    if access.branch_ids:
+        predicates.append(_expression(DataSource.branch_id.in_(access.branch_ids)))
+    if not predicates:
+        return _expression(false())
+    return _expression(and_(DataSource.tenant_id == tenant_id, or_(*predicates)))
+
+
+def integration_batch_visibility_filter(
+    auth: AuthContext, permission_key: str
+) -> ColumnElement[bool]:
+    tenant_id = _tenant_id(auth)
+    if tenant_id is None:
+        return _expression(false())
+    access = auth.scope_access(permission_key, tenant_id)
+    if access.tenant_wide:
+        return _expression(ImportBatch.tenant_id == tenant_id)
+    predicates: list[ColumnElement[bool]] = []
+    if access.company_ids:
+        predicates.append(_expression(ImportBatch.company_id.in_(access.company_ids)))
+    if access.branch_ids:
+        predicates.append(_expression(ImportBatch.branch_id.in_(access.branch_ids)))
+    if not predicates:
+        return _expression(false())
+    return _expression(and_(ImportBatch.tenant_id == tenant_id, or_(*predicates)))
 
 
 def _tenant_id(auth: AuthContext) -> UUID | None:

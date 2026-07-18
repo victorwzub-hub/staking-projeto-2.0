@@ -177,6 +177,26 @@
         "title": "AuditEventResponse",
         "type": "object"
       },
+      "Body_upload_source_file_api_v1_integrations_sources__source_id__upload_post": {
+        "properties": {
+          "dataset_type": {
+            "pattern": "^(product|supplier|sale|purchase|stock|price|all)$",
+            "title": "Dataset Type",
+            "type": "string"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "dataset_type"
+        ],
+        "title": "Body_upload_source_file_api_v1_integrations_sources__source_id__upload_post",
+        "type": "object"
+      },
       "BranchContextResponse": {
         "properties": {
           "id": {
@@ -630,6 +650,92 @@
         "title": "CompleteOnboardingResponse",
         "type": "object"
       },
+      "ConnectionTestResponse": {
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "healthy": {
+            "title": "Healthy",
+            "type": "boolean"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "healthy",
+          "latency_ms",
+          "message",
+          "checked_at"
+        ],
+        "title": "ConnectionTestResponse",
+        "type": "object"
+      },
+      "ConnectorTypeResponse": {
+        "properties": {
+          "authentication_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Authentication Types",
+            "type": "array"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "supported_entities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supported Entities",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "version",
+          "schema_version",
+          "capabilities",
+          "authentication_types",
+          "supported_entities",
+          "status"
+        ],
+        "title": "ConnectorTypeResponse",
+        "type": "object"
+      },
       "ContextSwitchRequest": {
         "properties": {
           "branch_id": {
@@ -666,6 +772,504 @@
           "tenant_id"
         ],
         "title": "ContextSwitchRequest",
+        "type": "object"
+      },
+      "CredentialReferenceCreateRequest": {
+        "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "display_hint": {
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Display Hint",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 140,
+            "minLength": 2,
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "aws-secrets-manager",
+              "vault",
+              "azure-key-vault",
+              "environment"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "secret_identifier": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Secret Identifier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "provider",
+          "secret_identifier",
+          "display_hint"
+        ],
+        "title": "CredentialReferenceCreateRequest",
+        "type": "object"
+      },
+      "CredentialReferenceResponse": {
+        "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "company_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Id"
+          },
+          "display_hint": {
+            "title": "Display Hint",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "rotated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotated At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "company_id",
+          "branch_id",
+          "name",
+          "provider",
+          "display_hint",
+          "status",
+          "rotated_at",
+          "version"
+        ],
+        "title": "CredentialReferenceResponse",
+        "type": "object"
+      },
+      "CursorPage_dict_str__Any__": {
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "limit"
+        ],
+        "title": "CursorPage[dict[str, Any]]",
+        "type": "object"
+      },
+      "DataSourceCreateRequest": {
+        "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "configuration": {
+            "additionalProperties": true,
+            "title": "Configuration",
+            "type": "object"
+          },
+          "connector_key": {
+            "enum": [
+              "deterministic-erp",
+              "file-upload"
+            ],
+            "title": "Connector Key",
+            "type": "string"
+          },
+          "connector_version": {
+            "default": "1.0.0",
+            "maxLength": 40,
+            "title": "Connector Version",
+            "type": "string"
+          },
+          "credential_reference_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credential Reference Id"
+          },
+          "dataset_type": {
+            "enum": [
+              "all",
+              "product",
+              "supplier",
+              "sale",
+              "purchase",
+              "stock",
+              "price"
+            ],
+            "title": "Dataset Type",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 2,
+            "title": "Name",
+            "type": "string"
+          },
+          "schedule_cron": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule Cron"
+          },
+          "sync_mode": {
+            "default": "incremental",
+            "enum": [
+              "full",
+              "incremental"
+            ],
+            "title": "Sync Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "connector_key",
+          "company_id",
+          "dataset_type"
+        ],
+        "title": "DataSourceCreateRequest",
+        "type": "object"
+      },
+      "DataSourceResponse": {
+        "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "connector_key": {
+            "title": "Connector Key",
+            "type": "string"
+          },
+          "connector_version": {
+            "title": "Connector Version",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataset_type": {
+            "title": "Dataset Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_health_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Health At"
+          },
+          "last_health_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Health Status"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "next_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Sync At"
+          },
+          "schedule_cron": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule Cron"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "sync_mode": {
+            "title": "Sync Mode",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "company_id",
+          "branch_id",
+          "connector_key",
+          "connector_version",
+          "name",
+          "dataset_type",
+          "status",
+          "sync_mode",
+          "schedule_cron",
+          "last_sync_at",
+          "next_sync_at",
+          "last_health_status",
+          "last_health_at",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DataSourceResponse",
+        "type": "object"
+      },
+      "DataSourceUpdateRequest": {
+        "properties": {
+          "configuration": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Configuration"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "schedule_cron": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule Cron"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "active",
+                  "inactive"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "DataSourceUpdateRequest",
         "type": "object"
       },
       "DependencyStatus": {
@@ -785,6 +1389,80 @@
         "title": "EconomicGroupUpdateRequest",
         "type": "object"
       },
+      "FieldMappingRequest": {
+        "properties": {
+          "default_value": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Value"
+          },
+          "required": {
+            "default": false,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "source_field": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Source Field",
+            "type": "string"
+          },
+          "target_entity": {
+            "enum": [
+              "product",
+              "supplier",
+              "sale",
+              "purchase",
+              "stock",
+              "price"
+            ],
+            "title": "Target Entity",
+            "type": "string"
+          },
+          "target_field": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Target Field",
+            "type": "string"
+          },
+          "transform_config": {
+            "additionalProperties": true,
+            "title": "Transform Config",
+            "type": "object"
+          },
+          "transform_type": {
+            "default": "identity",
+            "enum": [
+              "identity",
+              "trim",
+              "uppercase",
+              "lowercase",
+              "decimal",
+              "integer",
+              "date",
+              "datetime",
+              "boolean",
+              "constant"
+            ],
+            "title": "Transform Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_field",
+          "target_entity",
+          "target_field"
+        ],
+        "title": "FieldMappingRequest",
+        "type": "object"
+      },
       "ForgotPasswordRequest": {
         "properties": {
           "email": {
@@ -834,6 +1512,198 @@
           "version"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "ImportBatchResponse": {
+        "properties": {
+          "branch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Id"
+          },
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "data_source_id": {
+            "format": "uuid",
+            "title": "Data Source Id",
+            "type": "string"
+          },
+          "dataset_type": {
+            "title": "Dataset Type",
+            "type": "string"
+          },
+          "duplicate_records": {
+            "title": "Duplicate Records",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "parent_batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Batch Id"
+          },
+          "period_end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period End"
+          },
+          "period_start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Start"
+          },
+          "progress_percent": {
+            "title": "Progress Percent",
+            "type": "integer"
+          },
+          "queued_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queued At"
+          },
+          "received_records": {
+            "title": "Received Records",
+            "type": "integer"
+          },
+          "rejected_records": {
+            "title": "Rejected Records",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "valid_records": {
+            "title": "Valid Records",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "company_id",
+          "branch_id",
+          "data_source_id",
+          "parent_batch_id",
+          "dataset_type",
+          "period_start",
+          "period_end",
+          "state",
+          "progress_percent",
+          "received_records",
+          "valid_records",
+          "rejected_records",
+          "duplicate_records",
+          "cancel_requested",
+          "correlation_id",
+          "queued_at",
+          "started_at",
+          "completed_at",
+          "created_at",
+          "updated_at",
+          "version"
+        ],
+        "title": "ImportBatchResponse",
         "type": "object"
       },
       "InvitationAcceptRequest": {
@@ -970,6 +1840,75 @@
         "title": "InvitationResponse",
         "type": "object"
       },
+      "LineageResponse": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "source_entity": {
+            "title": "Source Entity",
+            "type": "string"
+          },
+          "source_external_id": {
+            "title": "Source External Id",
+            "type": "string"
+          },
+          "source_version": {
+            "title": "Source Version",
+            "type": "string"
+          },
+          "staging_record_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staging Record Id"
+          },
+          "target_entity": {
+            "title": "Target Entity",
+            "type": "string"
+          },
+          "target_record_id": {
+            "title": "Target Record Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "batch_id",
+          "staging_record_id",
+          "source_entity",
+          "source_external_id",
+          "source_version",
+          "target_entity",
+          "target_record_id",
+          "operation",
+          "created_at"
+        ],
+        "title": "LineageResponse",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -1010,6 +1949,121 @@
           "onboarding_required"
         ],
         "title": "LoginResponse",
+        "type": "object"
+      },
+      "MappingCreateRequest": {
+        "properties": {
+          "connector_version": {
+            "maxLength": 40,
+            "title": "Connector Version",
+            "type": "string"
+          },
+          "data_source_id": {
+            "format": "uuid",
+            "title": "Data Source Id",
+            "type": "string"
+          },
+          "dataset_type": {
+            "enum": [
+              "product",
+              "supplier",
+              "sale",
+              "purchase",
+              "stock",
+              "price"
+            ],
+            "title": "Dataset Type",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/FieldMappingRequest"
+            },
+            "maxItems": 300,
+            "minItems": 1,
+            "title": "Fields",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 2,
+            "title": "Name",
+            "type": "string"
+          },
+          "publish": {
+            "default": false,
+            "title": "Publish",
+            "type": "boolean"
+          },
+          "source_schema_version": {
+            "maxLength": 40,
+            "title": "Source Schema Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "data_source_id",
+          "dataset_type",
+          "connector_version",
+          "source_schema_version",
+          "fields"
+        ],
+        "title": "MappingCreateRequest",
+        "type": "object"
+      },
+      "MappingResponse": {
+        "properties": {
+          "data_source_id": {
+            "format": "uuid",
+            "title": "Data Source Id",
+            "type": "string"
+          },
+          "dataset_type": {
+            "title": "Dataset Type",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/FieldMappingRequest"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          },
+          "version_number": {
+            "title": "Version Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version_id",
+          "data_source_id",
+          "name",
+          "dataset_type",
+          "version_number",
+          "status",
+          "fields"
+        ],
+        "title": "MappingResponse",
         "type": "object"
       },
       "MeResponse": {
@@ -1255,6 +2309,76 @@
         "title": "Page[AuditEventResponse]",
         "type": "object"
       },
+      "Page_DataSourceResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DataSourceResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[DataSourceResponse]",
+        "type": "object"
+      },
+      "Page_ImportBatchResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ImportBatchResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[ImportBatchResponse]",
+        "type": "object"
+      },
       "Page_PlatformUserResponse_": {
         "properties": {
           "items": {
@@ -1445,6 +2569,99 @@
         "title": "PlatformUserStatusRequest",
         "type": "object"
       },
+      "ProcessingErrorResponse": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "error_class": {
+            "title": "Error Class",
+            "type": "string"
+          },
+          "error_code": {
+            "title": "Error Code",
+            "type": "string"
+          },
+          "field_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "retryable": {
+            "title": "Retryable",
+            "type": "boolean"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "staging_record_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staging Record Id"
+          },
+          "step_name": {
+            "title": "Step Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "batch_id",
+          "staging_record_id",
+          "step_name",
+          "entity_type",
+          "field_name",
+          "error_class",
+          "error_code",
+          "severity",
+          "message",
+          "retryable",
+          "created_at"
+        ],
+        "title": "ProcessingErrorResponse",
+        "type": "object"
+      },
       "ProfileResponse": {
         "properties": {
           "display_name": {
@@ -1532,6 +2749,113 @@
         "title": "ProfileUpdateRequest",
         "type": "object"
       },
+      "QualityResultResponse": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "evaluated_records": {
+            "title": "Evaluated Records",
+            "type": "integer"
+          },
+          "failed_records": {
+            "title": "Failed Records",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "rule_key": {
+            "title": "Rule Key",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "batch_id",
+          "entity_type",
+          "rule_key",
+          "severity",
+          "evaluated_records",
+          "failed_records",
+          "score",
+          "details",
+          "created_at"
+        ],
+        "title": "QualityResultResponse",
+        "type": "object"
+      },
+      "RawPayloadResponse": {
+        "properties": {
+          "content_sha256": {
+            "title": "Content Sha256",
+            "type": "string"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "download_url": {
+            "title": "Download Url",
+            "type": "string"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "retention_until": {
+            "format": "date",
+            "title": "Retention Until",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file_id",
+          "filename",
+          "content_type",
+          "size_bytes",
+          "content_sha256",
+          "retention_until",
+          "download_url"
+        ],
+        "title": "RawPayloadResponse",
+        "type": "object"
+      },
       "ReadinessResponse": {
         "properties": {
           "checks": {
@@ -1583,6 +2907,104 @@
           "display_name"
         ],
         "title": "RegisterRequest",
+        "type": "object"
+      },
+      "RejectedCorrectionRequest": {
+        "properties": {
+          "correction_payload": {
+            "additionalProperties": true,
+            "title": "Correction Payload",
+            "type": "object"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correction_payload",
+          "expected_version"
+        ],
+        "title": "RejectedCorrectionRequest",
+        "type": "object"
+      },
+      "RejectedRecordResponse": {
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "corrected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrected At"
+          },
+          "correction_payload": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correction Payload"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason_code": {
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "staging_record_id": {
+            "format": "uuid",
+            "title": "Staging Record Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "batch_id",
+          "staging_record_id",
+          "entity_type",
+          "reason_code",
+          "status",
+          "correction_payload",
+          "corrected_at",
+          "version",
+          "created_at"
+        ],
+        "title": "RejectedRecordResponse",
         "type": "object"
       },
       "ResendVerificationRequest": {
@@ -2058,6 +3480,61 @@
           "active_branch_id"
         ],
         "title": "SessionResponse",
+        "type": "object"
+      },
+      "SyncStartRequest": {
+        "properties": {
+          "entities": {
+            "items": {
+              "enum": [
+                "product",
+                "supplier",
+                "sale",
+                "purchase",
+                "stock",
+                "price"
+              ],
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Entities",
+            "type": "array"
+          },
+          "mode": {
+            "default": "incremental",
+            "enum": [
+              "full",
+              "incremental"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "range_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Range End"
+          },
+          "range_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Range Start"
+          }
+        },
+        "title": "SyncStartRequest",
         "type": "object"
       },
       "TeamCreateRequest": {
@@ -3656,6 +5133,1682 @@
         "summary": "Liveness probe",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/integrations/batches": {
+      "get": {
+        "operationId": "list_batches_api_v1_integrations_batches_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ImportBatchResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Batches",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/batches/{batch_id}": {
+      "get": {
+        "operationId": "get_batch_api_v1_integrations_batches__batch_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Batch",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/batches/{batch_id}/cancel": {
+      "post": {
+        "operationId": "cancel_import_batch_api_v1_integrations_batches__batch_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Import Batch",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/batches/{batch_id}/errors": {
+      "get": {
+        "operationId": "list_batch_errors_api_v1_integrations_batches__batch_id__errors_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProcessingErrorResponse"
+                  },
+                  "title": "Response List Batch Errors Api V1 Integrations Batches  Batch Id  Errors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Batch Errors",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/batches/{batch_id}/lineage": {
+      "get": {
+        "operationId": "list_batch_lineage_api_v1_integrations_batches__batch_id__lineage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LineageResponse"
+                  },
+                  "title": "Response List Batch Lineage Api V1 Integrations Batches  Batch Id  Lineage Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Batch Lineage",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/batches/{batch_id}/quality": {
+      "get": {
+        "operationId": "list_batch_quality_api_v1_integrations_batches__batch_id__quality_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QualityResultResponse"
+                  },
+                  "title": "Response List Batch Quality Api V1 Integrations Batches  Batch Id  Quality Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Batch Quality",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/batches/{batch_id}/raw": {
+      "get": {
+        "operationId": "raw_payload_metadata_api_v1_integrations_batches__batch_id__raw_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RawPayloadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Raw Payload Metadata",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/batches/{batch_id}/raw/download": {
+      "get": {
+        "operationId": "download_raw_payload_api_v1_integrations_batches__batch_id__raw_download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Raw Payload",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/batches/{batch_id}/rejections": {
+      "get": {
+        "operationId": "list_batch_rejections_api_v1_integrations_batches__batch_id__rejections_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RejectedRecordResponse"
+                  },
+                  "title": "Response List Batch Rejections Api V1 Integrations Batches  Batch Id  Rejections Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Batch Rejections",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/batches/{batch_id}/report.csv": {
+      "get": {
+        "operationId": "export_batch_report_api_v1_integrations_batches__batch_id__report_csv_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Batch Report",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/batches/{batch_id}/reprocess": {
+      "post": {
+        "operationId": "replay_import_batch_api_v1_integrations_batches__batch_id__reprocess_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 180,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replay Import Batch",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/canonical/inventory": {
+      "get": {
+        "operationId": "list_canonical_inventory_api_v1_integrations_canonical_inventory_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPage_dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Canonical Inventory",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/canonical/prices": {
+      "get": {
+        "operationId": "list_canonical_prices_api_v1_integrations_canonical_prices_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPage_dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Canonical Prices",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/canonical/products": {
+      "get": {
+        "operationId": "list_canonical_products_api_v1_integrations_canonical_products_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPage_dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Canonical Products",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/canonical/purchases": {
+      "get": {
+        "operationId": "list_canonical_purchases_api_v1_integrations_canonical_purchases_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPage_dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Canonical Purchases",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/canonical/sales": {
+      "get": {
+        "operationId": "list_canonical_sales_api_v1_integrations_canonical_sales_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPage_dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Canonical Sales",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/canonical/suppliers": {
+      "get": {
+        "operationId": "list_canonical_suppliers_api_v1_integrations_canonical_suppliers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursorPage_dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Canonical Suppliers",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/connectors": {
+      "get": {
+        "operationId": "list_connectors_api_v1_integrations_connectors_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectorTypeResponse"
+                  },
+                  "title": "Response List Connectors Api V1 Integrations Connectors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Connectors",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/credential-references": {
+      "get": {
+        "operationId": "list_credential_references_api_v1_integrations_credential_references_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CredentialReferenceResponse"
+                  },
+                  "title": "Response List Credential References Api V1 Integrations Credential References Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Credential References",
+        "tags": [
+          "integrations"
+        ]
+      },
+      "post": {
+        "operationId": "add_credential_reference_api_v1_integrations_credential_references_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialReferenceCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialReferenceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Credential Reference",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/mappings": {
+      "get": {
+        "operationId": "list_mappings_api_v1_integrations_mappings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MappingResponse"
+                  },
+                  "title": "Response List Mappings Api V1 Integrations Mappings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Mappings",
+        "tags": [
+          "integrations"
+        ]
+      },
+      "post": {
+        "operationId": "add_mapping_api_v1_integrations_mappings_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MappingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Mapping",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/mappings/validate": {
+      "post": {
+        "operationId": "validate_mapping_api_v1_integrations_mappings_validate_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MappingCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate Mapping",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/observability": {
+      "get": {
+        "operationId": "integration_observability_api_v1_integrations_observability_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": "Response Integration Observability Api V1 Integrations Observability Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Integration Observability",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/rejections/{rejection_id}": {
+      "patch": {
+        "operationId": "correct_rejection_api_v1_integrations_rejections__rejection_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rejection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rejection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectedCorrectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectedRecordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Correct Rejection",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/sources": {
+      "get": {
+        "operationId": "list_sources_api_v1_integrations_sources_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_DataSourceResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Sources",
+        "tags": [
+          "integrations"
+        ]
+      },
+      "post": {
+        "operationId": "add_source_api_v1_integrations_sources_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataSourceCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSourceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Source",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/sources/{source_id}": {
+      "patch": {
+        "operationId": "edit_source_api_v1_integrations_sources__source_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DataSourceUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSourceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Source",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/sources/{source_id}/sync": {
+      "post": {
+        "operationId": "sync_source_api_v1_integrations_sources__source_id__sync_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 180,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync Source",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/sources/{source_id}/test": {
+      "post": {
+        "operationId": "test_source_api_v1_integrations_sources__source_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Source",
+        "tags": [
+          "integrations"
+        ]
+      }
+    },
+    "/api/v1/integrations/sources/{source_id}/upload": {
+      "post": {
+        "operationId": "upload_source_file_api_v1_integrations_sources__source_id__upload_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 180,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_source_file_api_v1_integrations_sources__source_id__upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Source File",
+        "tags": [
+          "integrations"
         ]
       }
     },
