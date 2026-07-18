@@ -52,6 +52,7 @@ def test_root_omits_documentation_url_in_production() -> None:
         redis_url="redis://cache.internal:6379/0",
         api_cors_origins="https://app.example.com",
         frontend_base_url="https://app.example.com",
+        object_storage_backend="s3",
         session_cookie_secure=True,
         session_token_pepper="0123456789abcdef0123456789abcdef",  # noqa: S106
         one_time_token_pepper="abcdef0123456789abcdef0123456789",  # noqa: S106

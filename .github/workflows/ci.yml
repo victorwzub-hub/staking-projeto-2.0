@@ -66,9 +66,17 @@ jobs:
           pip install -e './apps/api[dev]'
           pip install -e './apps/worker[dev]'
       - name: Ruff
-        run: ruff check apps/api apps/worker scripts/prepare-integration-database.py scripts/generate-openapi.py
+        run: >-
+          ruff check apps/api apps/worker
+          scripts/prepare-integration-database.py
+          scripts/generate-openapi.py
+          scripts/benchmark-integration-data.py
       - name: Ruff format
-        run: ruff format --check apps/api apps/worker scripts/prepare-integration-database.py scripts/generate-openapi.py
+        run: >-
+          ruff format --check apps/api apps/worker
+          scripts/prepare-integration-database.py
+          scripts/generate-openapi.py
+          scripts/benchmark-integration-data.py
       - name: MyPy
         run: mypy apps/api/src apps/worker/src
       - name: OpenAPI contract drift
@@ -109,6 +117,11 @@ jobs:
           pytest apps/api/tests/integration/test_phase2_vertical_flow.py
           -m integration
           --cov=pharma_api --cov-append
+      - name: Canonical data platform deterministic pipeline
+        run: >-
+          pytest apps/api/tests/integration/test_phase2b_pipeline.py
+          -m integration
+          --cov=pharma_api --cov-append
       - name: Coverage gate
         run: coverage report --fail-under=65
       - name: Alembic head and current
@@ -128,8 +141,8 @@ jobs:
           cache: npm
       - name: Install frontend
         run: npm ci
-      - name: npm high/critical audit gate
-        run: npm audit --audit-level=high
+      - name: npm moderate/high/critical audit gate
+        run: npm audit --audit-level=moderate
       - name: ESLint
         run: npm run lint
       - name: Prettier
@@ -175,22 +188,37 @@ jobs:
       COMPOSE_PROJECT_NAME: pharma-intelligence-ci
     steps:
       - uses: actions/checkout@v4
-      - name: Generate ephemeral E2E administrator credentials
+      - name: Generate ephemeral E2E user credentials
         shell: bash
         run: |
           echo "E2E_ADMIN_EMAIL=phase2-admin-${GITHUB_RUN_ID}@example.com" >> "$GITHUB_ENV"
           echo "E2E_ADMIN_PASSWORD=$(openssl rand -base64 36 | tr -d '\n')" >> "$GITHUB_ENV"
+          echo "E2E_CROSS_TENANT_EMAIL=phase2-isolated-${GITHUB_RUN_ID}@example.com" >> "$GITHUB_ENV"
+          echo "E2E_CROSS_TENANT_PASSWORD=$(openssl rand -base64 36 | tr -d '\n')" >> "$GITHUB_ENV"
       - name: Execute full-stack Compose smoke test
         env:
           KEEP_STACK: "1"
         run: bash ./scripts/smoke-test-compose.sh
-      - name: Bootstrap an explicit CI-only platform administrator
+      - name: Bootstrap explicit CI-only user fixtures
         run: |
           docker compose exec -T \
             -e BOOTSTRAP_ENABLED=true \
             -e BOOTSTRAP_ADMIN_EMAIL="$E2E_ADMIN_EMAIL" \
             -e BOOTSTRAP_ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" \
             api pharma-bootstrap-admin
+          docker compose exec -T \
+            -e BOOTSTRAP_ENABLED=true \
+            -e BOOTSTRAP_ADMIN_EMAIL="$E2E_CROSS_TENANT_EMAIL" \
+            -e BOOTSTRAP_ADMIN_PASSWORD="$E2E_CROSS_TENANT_PASSWORD" \
+            api pharma-bootstrap-admin
+          db_user="$(docker compose exec -T postgres printenv POSTGRES_USER)"
+          db_name="$(docker compose exec -T postgres printenv POSTGRES_DB)"
+          printf '%s\n' \
+            "UPDATE users SET is_platform_admin=false,updated_at=now(),version=version+1 WHERE email IN (:'primary_email', :'isolated_email');" \
+            | docker compose exec -T postgres psql -v ON_ERROR_STOP=1 \
+                -U "$db_user" -d "$db_name" \
+                -v primary_email="$E2E_ADMIN_EMAIL" \
+                -v isolated_email="$E2E_CROSS_TENANT_EMAIL"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -204,6 +232,7 @@ jobs:
           E2E_REAL_STACK: "1"
           E2E_USE_EXISTING_SERVER: "1"
           E2E_BASE_URL: http://localhost:3000
+          E2E_API_BASE_URL: http://localhost:8000/api/v1
         run: npm run test:e2e --workspace @pharma/web -- real-stack.spec.ts
       - name: Print Compose diagnostics
         if: failure()

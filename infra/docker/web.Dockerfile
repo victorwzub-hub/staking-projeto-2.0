@@ -45,6 +45,19 @@ COPY --from=builder --chown=node:node /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=node:node /app/apps/web/public ./apps/web/public
 
+# Do not ship server-side source structure or package-manager tooling in the
+# production runtime image. The container only needs the Node.js executable.
+RUN find /app/apps/web/.next -type f -name '*.map' -delete \
+    && rm -rf /usr/local/lib/node_modules/npm \
+        /usr/local/lib/node_modules/corepack \
+        /usr/local/bin/corepack \
+        /usr/local/bin/npm \
+        /usr/local/bin/npx \
+        /usr/local/bin/pnpm \
+        /usr/local/bin/pnpx \
+        /usr/local/bin/yarn \
+        /usr/local/bin/yarnpkg
+
 USER node
 
 EXPOSE 3000
