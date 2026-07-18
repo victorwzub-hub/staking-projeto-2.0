@@ -125,7 +125,7 @@ migration_head="$(${COMPOSE[@]} exec -T postgres psql \
   --dbname "${POSTGRES_DB:-pharma}" \
   --tuples-only --no-align \
   --command "SELECT version_num FROM alembic_version" | tr -d '\r')"
-[[ "$migration_head" == "20260717_0003" ]] || {
+[[ "$migration_head" == "20260718_0004" ]] || {
   echo "Unexpected Alembic head: $migration_head" >&2
   exit 1
 }

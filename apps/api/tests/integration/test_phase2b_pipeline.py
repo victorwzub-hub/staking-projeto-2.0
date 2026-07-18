@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from pharma_api.infrastructure.analytics import tasks as analytics_tasks
 from pharma_api.infrastructure.db.session import close_engine
 from pharma_api.infrastructure.integrations import tasks
 from pharma_api.infrastructure.object_storage import FilesystemObjectStorage
@@ -33,6 +34,7 @@ async def test_deterministic_erp_pipeline_is_complete_and_traceable(
     repeat_execution_id = uuid4()
     object_storage = FilesystemObjectStorage(tmp_path, "phase2b-test")
     monkeypatch.setattr(tasks, "get_object_storage", lambda: object_storage)
+    monkeypatch.setattr(analytics_tasks.enqueue_batch_analytics, "send", lambda *args: None)
     for actor_name in (
         "parse_batch",
         "validate_batch",
@@ -169,6 +171,14 @@ async def test_deterministic_erp_pipeline_is_complete_and_traceable(
         await tasks._normalize_batch(batch_id, tenant_id, "phase2b-test")
         await tasks._load_batch(batch_id, tenant_id, "phase2b-test")
         await tasks._finalize_batch(batch_id, tenant_id, "phase2b-test")
+        analytics_job_id = await analytics_tasks._enqueue_batch(batch_id, tenant_id, "phase2c-test")
+        assert analytics_job_id is not None
+        first_metrics = await analytics_tasks._refresh(analytics_job_id, tenant_id)
+        repeated_metrics = await analytics_tasks._refresh(analytics_job_id, tenant_id)
+        assert repeated_metrics == first_metrics
+        assert first_metrics["facts_processed"] > 0
+        assert first_metrics["aggregates_updated"] > 0
+        assert first_metrics["catalog_entries"] == 120
 
         async with admin_engine.connect() as connection:
             state, received, valid, rejected = (
@@ -230,6 +240,28 @@ async def test_deterministic_erp_pipeline_is_complete_and_traceable(
             ).one()
             assert load_duration > 0
             assert load_throughput > 0
+            analytics_facts, analytics_definitions, analytics_version = (
+                await connection.execute(
+                    text(
+                        "SELECT (SELECT count(*) FROM analytics_facts "
+                        "WHERE tenant_id=:tenant),"
+                        "(SELECT count(*) FROM analytics_kpi_definition_versions "
+                        "WHERE tenant_id=:tenant),"
+                        "(SELECT current_version FROM analytics_data_versions "
+                        "WHERE tenant_id=:tenant)"
+                    ),
+                    {"tenant": tenant_id},
+                )
+            ).one()
+            assert analytics_facts > 0
+            assert analytics_definitions == 120
+            assert analytics_version == 1
+            assert (
+                await connection.execute(
+                    text("SELECT count(*) FROM analytics_lineage WHERE tenant_id=:tenant"),
+                    {"tenant": tenant_id},
+                )
+            ).scalar_one() == analytics_facts
 
         async with admin_engine.begin() as connection:
             await connection.execute(
@@ -297,6 +329,9 @@ async def test_deterministic_erp_pipeline_is_complete_and_traceable(
             assert (
                 await connection.execute(text("SELECT count(*) FROM import_batches"))
             ).scalar_one() == 2
+            assert (
+                await connection.execute(text("SELECT count(*) FROM analytics_facts"))
+            ).scalar_one() == analytics_facts
 
         cross_tenant_id = uuid4()
         async with app_engine.begin() as connection:
@@ -320,6 +355,9 @@ async def test_deterministic_erp_pipeline_is_complete_and_traceable(
             assert (
                 await connection.execute(text("SELECT count(*) FROM imported_files"))
             ).scalar_one() == 0
+            assert (
+                await connection.execute(text("SELECT count(*) FROM analytics_facts"))
+            ).scalar_one() == 0
             update_result = await connection.execute(
                 text(
                     "UPDATE canonical_products SET name='forbidden cross-tenant update' "
@@ -331,6 +369,18 @@ async def test_deterministic_erp_pipeline_is_complete_and_traceable(
     finally:
         await close_engine()
         async with admin_engine.begin() as connection:
+            # Formula registration is intentionally audited. The production trigger is
+            # append-only, so this isolated fixture must remove its own audit evidence
+            # under the migration owner before deleting the ephemeral tenant.
+            await connection.execute(
+                text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_no_update_delete")
+            )
+            await connection.execute(
+                text("DELETE FROM audit_events WHERE tenant_id=:tenant"), {"tenant": tenant_id}
+            )
+            await connection.execute(
+                text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_no_update_delete")
+            )
             await connection.execute(
                 text(
                     "UPDATE imported_files SET immutable=false,retention_until=current_date-1 "

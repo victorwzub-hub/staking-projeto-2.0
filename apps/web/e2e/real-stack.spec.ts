@@ -14,6 +14,11 @@ type BatchResponse = {
   state: string;
 };
 
+type AnalyticsFreshness = {
+  data_version: number;
+  last_refresh_job_id: string | null;
+};
+
 async function loginAndOnboard(
   page: Page,
   userEmail: string,
@@ -101,6 +106,22 @@ async function waitForBatch(page: Page, batchId: string): Promise<void> {
     .toBe("completed");
 }
 
+async function waitForAnalytics(page: Page, afterVersion: number): Promise<AnalyticsFreshness> {
+  let current: AnalyticsFreshness = { data_version: 0, last_refresh_job_id: null };
+  await expect
+    .poll(
+      async () => {
+        const response = await page.context().request.get(`${apiBaseUrl}/analytics/freshness`);
+        if (!response.ok()) return `http-${response.status()}`;
+        current = (await response.json()) as AnalyticsFreshness;
+        return current.data_version;
+      },
+      { timeout: 90_000, intervals: [500, 1_000, 2_000] },
+    )
+    .toBeGreaterThan(afterVersion);
+  return current;
+}
+
 async function synchronize(page: Page, sourceRow: Locator): Promise<string> {
   const responsePromise = page.waitForResponse(
     (response) =>
@@ -158,6 +179,7 @@ test.describe("real Docker Compose canonical data stack", () => {
     const primaryProductsBefore = await page.locator(".canonical-record").count();
 
     const firstBatchId = await synchronize(page, primarySourceRow);
+    const firstAnalytics = await waitForAnalytics(page, 0);
     await expect(page.locator(".canonical-record")).toHaveCount(primaryProductsBefore + 2);
 
     const firstCompletedRow = page
@@ -174,9 +196,41 @@ test.describe("real Docker Compose canonical data stack", () => {
     );
     await detail.getByRole("button", { name: "Fechar" }).click();
 
+    await page.getByRole("link", { name: "Analytics" }).click();
+    await expect(page.getByRole("heading", { name: "Analytics farmacêutico" })).toBeVisible();
+    const netRevenueCard = page.getByRole("button").filter({ hasText: "Receita líquida" }).first();
+    await expect(netRevenueCard.locator("strong")).not.toHaveText("—");
+    await netRevenueCard.click();
+    await expect(page.getByRole("heading", { name: "Registros de origem" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "canonical_sales" }).first()).toBeVisible();
+    await page.getByLabel("Valor-alvo").fill("100");
+    await page.getByLabel("Observação").fill("Meta E2E da etapa 2C");
+    await page.getByRole("button", { name: "Salvar meta" }).click();
+    await expect(page.getByText(/Meta R\$/).first()).toBeVisible();
+
+    const today = new Date();
+    const periodFrom = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))
+      .toISOString()
+      .slice(0, 10);
+    const periodTo = today.toISOString().slice(0, 10);
+    const detailUrl = `${apiBaseUrl}/analytics/drilldown/sales.net_revenue?from=${periodFrom}&to=${periodTo}&limit=100&offset=0`;
+    const initialFactsResponse = await page.context().request.get(detailUrl);
+    expect(initialFactsResponse.ok()).toBe(true);
+    const initialFacts = (await initialFactsResponse.json()) as Array<{ fact_id: string }>;
+    expect(new Set(initialFacts.map((item) => item.fact_id)).size).toBe(initialFacts.length);
+
+    await page.getByRole("link", { name: "Integrações" }).click();
+
     // Byte-identical extraction: canonical upserts must preserve cardinality.
     await synchronize(page, primarySourceRow);
+    const repeatedAnalytics = await waitForAnalytics(page, firstAnalytics.data_version);
+    expect(repeatedAnalytics.data_version).toBeGreaterThan(firstAnalytics.data_version);
     await expect(page.locator(".canonical-record")).toHaveCount(primaryProductsBefore + 2);
+    const repeatedFactsResponse = await page.context().request.get(detailUrl);
+    expect(repeatedFactsResponse.ok()).toBe(true);
+    const repeatedFacts = (await repeatedFactsResponse.json()) as Array<{ fact_id: string }>;
+    expect(repeatedFacts).toHaveLength(initialFacts.length);
+    expect(new Set(repeatedFacts.map((item) => item.fact_id)).size).toBe(repeatedFacts.length);
 
     const reprocessResponsePromise = page.waitForResponse(
       (response) =>
@@ -222,6 +276,12 @@ test.describe("real Docker Compose canonical data stack", () => {
         `${apiBaseUrl}/integrations/batches/${firstBatchId}`,
       );
       expect(isolatedCannotReadPrimary.status()).toBe(404);
+
+      expect(firstAnalytics.last_refresh_job_id).not.toBeNull();
+      const isolatedCannotReadPrimaryAnalytics = await isolatedContext.request.get(
+        `${apiBaseUrl}/analytics/refresh/${firstAnalytics.last_refresh_job_id}`,
+      );
+      expect(isolatedCannotReadPrimaryAnalytics.status()).toBe(404);
 
       const primarySources = await page
         .context()

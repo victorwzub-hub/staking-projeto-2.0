@@ -1,0 +1,50 @@
+schema_version: 1
+group: pharma-analytics-phase2c
+evaluation_interval: 1m
+source:
+  endpoint: /api/v1/analytics/observability
+  log_events:
+    - analytics_refresh_completed
+    - analytics_refresh_failed
+    - http_request_completed
+alerts:
+  - name: AnalyticalRefreshFailures
+    condition: refresh_failed > 0 for 5m
+    severity: critical
+    runbook: docs/phase2/analytics-operations.md#refresh-failed
+  - name: AnalyticalQueueStalled
+    condition: refresh_queued > 0 and refresh_running == 0 for 10m
+    severity: warning
+    runbook: docs/phase2/analytics-operations.md#fila-sem-progresso
+  - name: AnalyticalLagHigh
+    condition: analytical_lag_seconds > 1800 for 10m
+    severity: warning
+    runbook: docs/phase2/analytics-operations.md#freshness-e-watermark
+  - name: AnalyticalQualityLow
+    condition: quality_score < 0.98 for 15m
+    severity: warning
+    runbook: docs/phase2/analytics-operations.md#qualidade-baixa
+  - name: AnalyticalCacheHitRateLow
+    condition: cache_requests >= 100 and cache_hit_rate < 0.60 for 30m
+    severity: info
+    runbook: docs/phase2/analytics-operations.md#cache
+  - name: AnalyticalApiP95High
+    condition: route_prefix('/api/v1/analytics').duration_ms.p95 > 2000 for 15m
+    severity: warning
+    runbook: docs/phase2/analytics-operations.md#latencia-da-api
+  - name: AnalyticalStorageGrowthAnomalous
+    condition: rate(facts_table_bytes + aggregates_table_bytes, 24h) > 0.30
+    severity: warning
+    runbook: docs/phase2/analytics-operations.md#crescimento-de-storage
+  - name: AnalyticalRecomputeStorm
+    condition: delta(recomputations, 1h) > 10
+    severity: warning
+    runbook: docs/phase2/analytics-operations.md#backfill-e-recompute
+privacy:
+  prohibit_open_cardinality_labels: true
+  allowed_dimensions:
+    - environment
+    - event
+    - route_template
+    - status_class
+    - trigger_type

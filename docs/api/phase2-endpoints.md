@@ -52,7 +52,20 @@ Todas as rotas abaixo usam o prefixo `/integrations`, respeitam o contexto de te
 - observabilidade: `/observability` agrega execução, backlog, dead letter, volume, throughput e qualidade;
 - consumo canônico: `/canonical/products`, `/suppliers`, `/sales`, `/purchases`, `/inventory` e `/prices`, todos com paginação por cursor opaco.
 
-O artefato versionado `docs/openapi/phase2-openapi.json` é gerado diretamente da aplicação e contém os schemas completos das 76 rotas publicadas.
+## Analytics e camada semântica (Etapa 2C)
+
+Rotas sob `/analytics` exigem `analytics.view` e mantêm tenant/grants/filtros no servidor. Métricas financeiras exigem `analytics.financial`; detalhe, exportação, metas e operação exigem permissões dedicadas.
+
+- catálogo/consulta: `/kpis`, `/kpis/{code}`, `/results`, `/kpis/{code}/result` e `/comparisons`;
+- análise: `/timeseries`, `/ranking`, `/composition` e `/drilldown`;
+- contexto: `/filters`, `/dimensions/{type}`, `/freshness`, `/quality` e `/observability`;
+- metas: `/goals`, `/goals/{id}` e `/goals/{id}/history`;
+- operação: `/refresh`, `/refresh/{id}` e `/refresh/{id}/cancel`, com modo `backfill` ou `recompute` no payload;
+- exportação: `/export.csv` aplica rate limit, auditoria, escopo, limite de linhas e proteção contra formula injection.
+
+Resultados trazem versão de fórmula/dados, freshness, qualidade e cache. Comparações incluem período anterior, ano anterior, média móvel, rede autorizada e categoria quando aplicável. O catálogo não expõe valores financeiros sem a permissão correspondente.
+
+O artefato versionado `docs/openapi/phase2-openapi.json` é gerado diretamente da aplicação e contém os schemas completos das rotas publicadas.
 
 ## Erros
 

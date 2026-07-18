@@ -2011,6 +2011,10 @@ async def _finalize_batch(batch_id: UUID, tenant_id: UUID, correlation_id: str) 
     finally:
         await session.close()
     publish_outbox.send(str(tenant_id))
+    if target in {ProcessingState.COMPLETED, ProcessingState.COMPLETED_WITH_WARNINGS}:
+        from pharma_api.infrastructure.analytics.tasks import enqueue_batch_analytics
+
+        enqueue_batch_analytics.send(str(batch_id), str(tenant_id), correlation_id)
 
 
 @dramatiq.actor(
