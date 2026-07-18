@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from pharma_api.api.v1.analytics import router as analytics_router
 from pharma_api.api.v1.audit_events import router as audit_events_router
 from pharma_api.api.v1.auth import router as auth_router
 from pharma_api.api.v1.branches import router as branches_router
@@ -37,4 +38,5 @@ api_router.include_router(roles_router)
 api_router.include_router(permissions_router)
 api_router.include_router(audit_events_router)
 api_router.include_router(integrations_router)
+api_router.include_router(analytics_router)
 api_router.include_router(platform_router)
