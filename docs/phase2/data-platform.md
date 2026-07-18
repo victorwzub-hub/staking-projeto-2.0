@@ -142,3 +142,6 @@ persistidas por etapa e a telemetria dos containers.
 ## Gates de CI
 
 CI executa Ruff, MyPy, Pytest unitário, ciclo Alembic upgrade/downgrade/upgrade, RLS negativo, pipeline determinístico real no PostgreSQL, OpenAPI drift, TypeScript, ESLint, Vitest, build, Playwright e Compose com PostgreSQL/Redis/MinIO/API/worker/web. O E2E real-stack executa o simulador duas vezes e verifica cardinalidade canônica estável.
+
+Os achados não corrigíveis das imagens base e suas mitigações estão registrados em
+[`phase2b-trivy-residual-risks.md`](../audits/phase2b-trivy-residual-risks.md).
