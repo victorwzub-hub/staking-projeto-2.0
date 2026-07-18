@@ -10,6 +10,107 @@ export type ApiErrorResponse = {
 
 export type MessageResponse = { message: string };
 
+export type AnalyticsKpiResult = {
+  code: string;
+  name: string;
+  category: string;
+  unit: string;
+  value: string | null;
+  reason: string | null;
+  formula_version: number;
+  period_start: string;
+  period_end: string;
+  comparison_value: string | null;
+  absolute_variation: string | null;
+  percentage_variation: string | null;
+  target_value: string | null;
+  target_status: string | null;
+  freshness_at: string | null;
+  quality_score: string | null;
+  data_version: number;
+  cache_status: "hit" | "miss" | "bypass";
+};
+
+export type AnalyticsKpiComparison = AnalyticsKpiResult & {
+  same_period_last_year_value: string | null;
+  moving_average_28d_value: string | null;
+  authorized_network_value: string | null;
+  category_value: string | null;
+};
+
+export type AnalyticsTimePoint = {
+  period: string;
+  value: string | null;
+  comparison_value: string | null;
+  target_value: string | null;
+};
+
+export type AnalyticsRankingItem = {
+  dimension_key: string;
+  label: string;
+  value: string | null;
+  share_percent: string | null;
+  rank: number;
+};
+
+export type AnalyticsDrillDownItem = {
+  fact_id: string;
+  fact_type: string;
+  occurred_at: string;
+  company_id: string | null;
+  branch_id: string | null;
+  product_id: string | null;
+  supplier_id: string | null;
+  canonical_table: string;
+  canonical_record_id: string;
+  canonical_version: string;
+  measures: Record<string, unknown>;
+  source_batch_id: string | null;
+  transformation_version: string | null;
+};
+
+export type AnalyticsAvailableFilters = {
+  economic_groups: Array<{ id: string; label: string }>;
+  companies: Array<{ id: string; label: string }>;
+  branches: Array<{ id: string; label: string }>;
+  products: Array<{ id: string; label: string }>;
+  categories: Array<{ id: string; label: string }>;
+  brands: Array<{ id: string; label: string }>;
+  suppliers: Array<{ id: string; label: string }>;
+  channels: string[];
+  minimum_date: string | null;
+  maximum_date: string | null;
+};
+
+export type AnalyticsFreshness = {
+  data_version: number;
+  watermark: string | null;
+  freshness_at: string | null;
+  lag_seconds: number | null;
+  quality_score: string | null;
+  last_refresh_job_id: string | null;
+};
+
+export type AnalyticsGoal = {
+  id: string;
+  tenant_id: string;
+  company_id: string | null;
+  branch_id: string | null;
+  kpi_code: string;
+  period_start: string;
+  period_end: string;
+  target_value: string | null;
+  lower_value: string | null;
+  upper_value: string | null;
+  direction: "increase" | "decrease" | "target";
+  owner_user_id: string;
+  note: string | null;
+  active: boolean;
+  version: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type DependencyStatus = {
   status: "ok" | "error";
   detail: string | null;
