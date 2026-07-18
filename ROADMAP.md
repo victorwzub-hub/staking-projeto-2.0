@@ -20,9 +20,9 @@
 
 **Gate ambiental pendente:** o job `compose-smoke` deve passar no GitHub Actions, pois Docker não está disponível no ambiente local desta correção. A Fase 2 não deve ser iniciada antes desse resultado verde.
 
-## Fase 2 — Identidade, tenancy e autorização — próxima após o gate
+## Fase 2A — Identidade, tenancy e autorização — concluída
 
-Objetivo: implementar o primeiro módulo vertical de negócio sem avançar para dashboards ou inteligência analítica.
+Objetivo: implementar a fronteira de identidade, escopo e autorização usada pelos módulos de negócio.
 
 - Modelagem de tenant, grupo econômico, empresa, filial e usuário.
 - Autenticação segura, sessão/token, recuperação de acesso e preparação para MFA.
@@ -33,24 +33,24 @@ Objetivo: implementar o primeiro módulo vertical de negócio sem avançar para 
 - Migrations, endpoints, frontend, testes de integração e E2E.
 - ADR da estratégia multi-tenant e threat model inicial.
 
-## Fase 3 — Plataforma de integrações
+## Fase 2B — Plataforma canônica e integrações — concluída
 
-- SDK interno de conectores.
-- Importação manual CSV/Excel com staging, idempotência e reconciliação.
-- Histórico de sincronizações, erros e reprocessamento.
+- SDK interno de conectores, landing imutável e ingestão CSV/JSON/NDJSON.
+- Staging, qualidade, quarentena, idempotência, reconciliação e lineage.
+- Modelo canônico de produtos, fornecedores, vendas, compras, estoque e preços.
+- Operação, replay, checkpoints, dead letters e E2E real-stack.
 
-## Fase 4 — Catálogo e pipeline de dados
+## Fase 2C — Warehouse, camada semântica e KPIs — implementação concluída
 
-- Produtos, categorias, fornecedores, vendas, compras, estoque e financeiro.
-- Validação, normalização, qualidade e linhagem.
+- Warehouse dimensional no PostgreSQL com fatos, dimensões SCD2 e agregados diários.
+- 120 KPIs operacionais em catálogo versionado e AST de fórmula segura.
+- Refresh incremental, backfill/recompute, cache por versão e lineage.
+- Comparações, metas, exportação, dashboard responsivo e observabilidade.
+- Gates de migration, RLS, unitário, integração, E2E, benchmark, segurança e supply chain.
 
-## Fase 5 — KPIs, diagnósticos e planos de ação
+## Próximas etapas
 
-- Catálogo versionado de KPIs.
 - Motor de regras e evidências rastreáveis.
 - Alertas, recomendações e acompanhamento de ações.
-
-## Fases posteriores
-
 - Simuladores, billing, conectores ERP homologados, camada analítica, Machine Learning e LLM controlada.
 - Infraestrutura de produção, backup/restore, observabilidade completa, SLOs e testes de carga.

@@ -47,4 +47,4 @@ Serviços separados: `api`, `web`, `worker`, PostgreSQL e Redis. Um serviço/eta
 
 ## Evolução
 
-A Fase 2 cria pontos de extensão para módulos futuros consumirem `AuthContext`, tenant, escopo e permissões. Não cria tabelas de ERP, catálogo, vendas, estoque, financeiro ou analytics.
+A Etapa 2B consome `AuthContext`, tenant, escopo e permissões para integrar ERPs e publicar o modelo canônico. A Etapa 2C deriva desse canônico um warehouse no PostgreSQL, camada semântica segura, cache versionado e dashboard. Os detalhes de grãos, SCD2, refresh, segurança e critérios de evolução para um warehouse dedicado estão em [`analytics-platform.md`](analytics-platform.md) e no [ADR 0016](../adr/0016-postgresql-analytics-semantic-layer.md).

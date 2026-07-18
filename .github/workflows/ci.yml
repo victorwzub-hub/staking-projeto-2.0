@@ -71,24 +71,32 @@ jobs:
           scripts/prepare-integration-database.py
           scripts/generate-openapi.py
           scripts/benchmark-integration-data.py
+          scripts/benchmark-analytics.py
+          scripts/generate-kpi-catalog.py
       - name: Ruff format
         run: >-
           ruff format --check apps/api apps/worker
           scripts/prepare-integration-database.py
           scripts/generate-openapi.py
           scripts/benchmark-integration-data.py
+          scripts/benchmark-analytics.py
+          scripts/generate-kpi-catalog.py
       - name: MyPy
         run: mypy apps/api/src apps/worker/src
       - name: OpenAPI contract drift
         run: |
           python scripts/generate-openapi.py
+          python scripts/generate-kpi-catalog.py
           git diff --exit-code docs/openapi/phase2-openapi.json
+          git diff --exit-code docs/phase2/kpi-catalog.md
       - name: Unit tests
         run: pytest apps/api/tests apps/worker/tests -m 'not integration' --cov=pharma_api --cov=pharma_worker --cov-append
       - name: Python dependency consistency
         run: pip check
       - name: Python vulnerability audit
         run: pip-audit --progress-spinner off
+      - name: Analytical benchmark smoke profile
+        run: python scripts/benchmark-analytics.py --profile smoke
       - name: Migration upgrade-downgrade-upgrade cycle
         run: bash ./scripts/test-migrations.sh
       - name: Prepare RLS application role

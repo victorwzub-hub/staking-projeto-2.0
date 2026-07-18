@@ -2,9 +2,9 @@
 
 ## Base atual
 
-Revision: `20260716_0001`.
+Head atual: `20260718_0004`.
 
-A migration cria 24 tabelas, índices, constraints, triggers, catálogo de permissões, papéis de sistema, termos de staging e 14 políticas RLS. `upgrade` e `downgrade` são implementados.
+As quatro revisões criam identidade/escopo, endurecimento 2A.2, plataforma canônica 2B e warehouse/camada semântica 2C. A revisão `20260718_0004` adiciona dez tabelas analíticas, índices, constraints, oito permissões e políticas RLS forçadas. Todas implementam `upgrade` e `downgrade`.
 
 ## Comandos
 

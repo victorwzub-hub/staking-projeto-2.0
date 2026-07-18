@@ -145,3 +145,7 @@ CI executa Ruff, MyPy, Pytest unitário, ciclo Alembic upgrade/downgrade/upgrade
 
 Os achados não corrigíveis das imagens base e suas mitigações estão registrados em
 [`phase2b-trivy-residual-risks.md`](../audits/phase2b-trivy-residual-risks.md).
+
+## Consumidor analítico — Etapa 2C
+
+O warehouse não altera o contrato canônico: ele consome entidades concluídas, preserva batch/registro/versão de origem e publica sua própria versão somente após um refresh bem-sucedido. Grãos, SCD2, late arrivals, agregados, cache e segurança estão documentados em [`analytics-platform.md`](../architecture/analytics-platform.md). Operação de backfill/recompute e recuperação está em [`analytics-operations.md`](analytics-operations.md).

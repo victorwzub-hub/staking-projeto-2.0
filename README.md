@@ -1,6 +1,6 @@
 # Pharma Intelligence SaaS — Plataforma operacional
 
-Monorepo do Pharma Intelligence SaaS. A Fase 2 inclui identidade, tenancy, RBAC e RLS; a Etapa 2B adiciona landing S3 imutável, SDK de conectores, importação CSV/JSON/NDJSON, pipeline Dramatiq e modelo canônico de produtos, fornecedores, vendas, compras, estoque e preços.
+Monorepo do Pharma Intelligence SaaS. A Fase 2 inclui identidade, tenancy, RBAC e RLS; a Etapa 2B adiciona landing S3 imutável, integrações e modelo canônico. A Etapa 2C acrescenta warehouse dimensional, camada semântica com 120 KPIs versionados, metas, comparações, APIs e dashboard analítico.
 
 ## Estado atual
 
@@ -8,6 +8,8 @@ Monorepo do Pharma Intelligence SaaS. A Fase 2 inclui identidade, tenancy, RBAC 
 - Integração ERP determinística e upload real pelo mesmo contrato e pipeline.
 - MinIO local, staging/quarentena, qualidade, replay, checkpoints e linhagem.
 - Frontend consulta a API real e oferece operação de fontes, lotes e dados canônicos.
+- Dashboard analítico real com filtros autorizados, série temporal, ranking, composição, drill-down, comparações, metas e exportação segura.
+- Refresh incremental/backfill/recompute, lineage, freshness, qualidade, cache Redis versionado e observabilidade analítica.
 - Estados acessíveis de loading, sucesso, indisponibilidade e retry.
 - API com liveness, readiness e fechamento explícito de PostgreSQL, Redis e object storage.
 - Configurações inseguras de produção são rejeitadas no startup.
@@ -87,7 +89,7 @@ O script sempre encerra os serviços, inclusive quando há falha. Em caso de err
 
 ## Banco e migrações
 
-As migrações do Alembic criam a fundação de identidade e escopo, o endurecimento 2A.2 e a plataforma canônica 2B.
+As migrações do Alembic criam a fundação de identidade e escopo, o endurecimento 2A.2, a plataforma canônica 2B e o warehouse/catálogo semântico 2C.
 
 ```bash
 cd apps/api
@@ -126,6 +128,10 @@ Quando `APP_ENV=production`, a API recusa:
 
 - Arquitetura: [`docs/architecture/overview.md`](docs/architecture/overview.md)
 - Plataforma de dados, operação e benchmark: [`docs/phase2/data-platform.md`](docs/phase2/data-platform.md)
+- Arquitetura analítica: [`docs/architecture/analytics-platform.md`](docs/architecture/analytics-platform.md)
+- Catálogo dos 120 KPIs: [`docs/phase2/kpi-catalog.md`](docs/phase2/kpi-catalog.md)
+- Operação e benchmark analítico: [`docs/phase2/analytics-operations.md`](docs/phase2/analytics-operations.md) e [`docs/phase2/analytics-benchmark.md`](docs/phase2/analytics-benchmark.md)
+- ADR do warehouse/camada semântica: [`docs/adr/0016-postgresql-analytics-semantic-layer.md`](docs/adr/0016-postgresql-analytics-semantic-layer.md)
 - ADR de landing/modelo canônico: [`docs/adr/0015-canonical-data-and-immutable-landing.md`](docs/adr/0015-canonical-data-and-immutable-landing.md)
 - ADR do monólito: [`docs/adr/0001-modular-monolith.md`](docs/adr/0001-modular-monolith.md)
 - ADR do worker: [`docs/adr/0002-dramatiq-redis.md`](docs/adr/0002-dramatiq-redis.md)
