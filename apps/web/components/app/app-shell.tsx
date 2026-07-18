@@ -20,6 +20,7 @@ const navigation = [
   ["/app/roles", "Papéis", "role.read"],
   ["/app/permissions", "Permissões", "role.read"],
   ["/app/audit", "Auditoria", "audit.read"],
+  ["/app/integrations", "Integrações", "integration.view"],
   ["/app/security", "Segurança", null],
 ] as const;
 
