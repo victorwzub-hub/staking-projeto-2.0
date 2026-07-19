@@ -5,6 +5,11 @@ from pathlib import Path
 from types import ModuleType
 from typing import cast
 
+from sqlalchemy import CheckConstraint, ForeignKeyConstraint, Index, Table, UniqueConstraint
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.schema import AddConstraint, CreateIndex, CreateTable
+
 from pharma_api.domain.diagnostics.actions import ACTION_DOMAINS, ACTION_PRIORITIES, ACTION_STATUSES
 from pharma_api.domain.diagnostics.conditions import SEVERITIES
 from pharma_api.infrastructure.db.base import Base
@@ -19,10 +24,6 @@ from pharma_api.infrastructure.db.models.diagnostics import (
     RULE_VERSION_POLICIES,
     RULE_VERSION_STATUSES,
 )
-from sqlalchemy import CheckConstraint, ForeignKeyConstraint, Index, Table, UniqueConstraint
-from sqlalchemy.dialects import postgresql
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.schema import AddConstraint, CreateIndex, CreateTable
 
 DIAGNOSTIC_TABLE_NAMES = {
     "diagnostic_rule_definitions",

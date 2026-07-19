@@ -7,8 +7,9 @@ from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 from typing import cast
 
-import pharma_api.domain.diagnostics.conditions as conditions_module
 import pytest
+
+import pharma_api.domain.diagnostics.conditions as conditions_module
 from pharma_api.domain.analytics.kpis import KPI_BY_CODE
 from pharma_api.domain.diagnostics.actions import (
     ACTION_BY_CODE,

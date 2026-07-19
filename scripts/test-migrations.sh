@@ -69,4 +69,4 @@ alembic upgrade head
 alembic upgrade head
 current_revision="$(alembic current)"
 printf '%s\n' "$current_revision"
-grep -q "20260718_0004" <<<"$current_revision"
+grep -q "20260719_0005" <<<"$current_revision"
