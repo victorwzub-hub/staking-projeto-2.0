@@ -5,6 +5,11 @@ from pathlib import Path
 from types import ModuleType
 from typing import cast
 
+from sqlalchemy import CheckConstraint, ForeignKeyConstraint, Index, Table, UniqueConstraint
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.schema import CreateIndex, CreateTable
+
 from pharma_api.domain.diagnostics.actions import ACTION_DOMAINS, ACTION_PRIORITIES
 from pharma_api.domain.diagnostics.conditions import SEVERITIES
 from pharma_api.infrastructure.db.base import Base
@@ -28,10 +33,6 @@ from pharma_api.infrastructure.db.models.diagnostics import (
     SUPPRESSION_TARGET_TYPES,
     SUPPRESSION_TYPES,
 )
-from sqlalchemy import CheckConstraint, ForeignKeyConstraint, Index, Table, UniqueConstraint
-from sqlalchemy.dialects import postgresql
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.schema import CreateIndex, CreateTable
 
 OPERATIONAL_TABLE_NAMES = {
     "diagnostic_evaluation_runs",
@@ -734,7 +735,9 @@ def test_operational_models_do_not_depend_on_future_migration_or_runtime_layers(
     assert "frontend" not in source.lower()
 
 
-def test_future_diagnostics_migration_was_not_created() -> None:
+def test_diagnostics_migration_is_the_single_expected_next_revision() -> None:
     migration_dir = Path(__file__).parents[1] / "alembic" / "versions"
 
-    assert not list(migration_dir.glob("20260719_0005*"))
+    assert [path.name for path in migration_dir.glob("20260719_0005*")] == [
+        "20260719_0005_diagnostics_rules_engine.py"
+    ]

@@ -11,6 +11,12 @@ from sqlalchemy.engine import Connection
 from pharma_api.core.config import get_settings
 
 _LOCK_ID = 7_240_216_202_607_16
+_PROTECTED_RUNTIME_TABLES = (
+    "permissions",
+    "terms_versions",
+    "diagnostic_action_catalog_snapshots",
+    "diagnostic_action_catalog_entries",
+)
 
 
 def _resolve_alembic_config() -> Path:
@@ -41,11 +47,11 @@ def _grant_application_role(connection: Connection, role_name: str | None) -> No
         f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {quoted_role}",
         "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
         f"GRANT USAGE, SELECT ON SEQUENCES TO {quoted_role}",
-        f"REVOKE INSERT, UPDATE, DELETE ON permissions FROM {quoted_role}",
-        f"REVOKE INSERT, UPDATE, DELETE ON terms_versions FROM {quoted_role}",
     )
     for statement in statements:
         connection.execute(text(statement))
+    for table in _PROTECTED_RUNTIME_TABLES:
+        connection.execute(text(f"REVOKE INSERT, UPDATE, DELETE ON {table} FROM {quoted_role}"))
 
 
 def main() -> None:
