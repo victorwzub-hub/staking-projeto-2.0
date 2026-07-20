@@ -38,14 +38,25 @@ async def role_permission_keys(session: AsyncSession, role_id: UUID) -> frozense
 
 
 async def list_roles(session: AsyncSession, auth: AuthContext) -> list[tuple[Role, list[str]]]:
-    roles = (
-        await session.scalars(
-            select(Role)
+    rows = (
+        await session.execute(
+            select(Role, Permission.key)
+            .outerjoin(RolePermission, RolePermission.role_id == Role.id)
+            .outerjoin(Permission, Permission.id == RolePermission.permission_id)
             .where(role_visibility_filter(auth, "role.read"))
-            .order_by(Role.is_system.desc(), Role.name)
+            .order_by(Role.is_system.desc(), Role.name, Permission.key)
         )
     ).all()
-    return [(role, sorted(await role_permission_keys(session, role.id))) for role in roles]
+
+    ordered_roles: list[Role] = []
+    permissions_by_role: dict[UUID, list[str]] = {}
+    for role, permission_key in rows:
+        if role.id not in permissions_by_role:
+            ordered_roles.append(role)
+            permissions_by_role[role.id] = []
+        if permission_key is not None:
+            permissions_by_role[role.id].append(permission_key)
+    return [(role, permissions_by_role[role.id]) for role in ordered_roles]
 
 
 def _validate_tenant_role_permissions(

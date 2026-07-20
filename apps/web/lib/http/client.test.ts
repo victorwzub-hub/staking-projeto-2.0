@@ -23,6 +23,24 @@ describe("apiRequest", () => {
     });
   });
 
+  it("lets the browser set the multipart boundary for FormData uploads", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation((_input, init) => {
+      const headers = new Headers(init?.headers);
+      expect(headers.has("Content-Type")).toBe(false);
+      expect(init?.body).toBeInstanceOf(FormData);
+      return Promise.resolve(
+        new Response(JSON.stringify({ id: "batch-1" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    });
+    const body = new FormData();
+    body.set("dataset_type", "product");
+
+    await apiRequest("integrations/sources/source-1/upload", { method: "POST", body }, fetcher);
+  });
+
   it("aborts a request that exceeds the configured timeout", async () => {
     vi.useFakeTimers();
     const fetcher = vi.fn<typeof fetch>().mockImplementation((_input, init) => {

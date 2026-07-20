@@ -33,6 +33,7 @@ Thumbs.db
 # Runtime
 *.log
 .tmp/
+.local/
 
 # TypeScript incremental cache
 *.tsbuildinfo

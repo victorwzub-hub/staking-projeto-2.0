@@ -12,6 +12,19 @@
 - health e readiness separados;
 - diagnósticos de Compose impressos em falha.
 
+- estatísticas persistidas por etapa de integração (bytes, duração, registros/s e qualidade);
+- resumo RBAC-scoped em `GET /api/v1/integrations/observability`;
+- eventos de lote/outbox, retries e dead letters correlacionáveis sem payload sensível.
+- jobs analíticos com duração, linhas, watermark, trigger, tentativas e resultado;
+- freshness, qualidade, data version, fatos/agregados, cache, backfill/recompute e storage em `GET /api/v1/analytics/observability`;
+- dashboard e regras de alerta versionados em `infra/observability/analytics-dashboard.json` e `analytics-alerts.yml`.
+
+O painel, alertas e SLOs da plataforma de dados estão em
+[`data-platform.md`](data-platform.md#observabilidade-e-alertas).
+O runbook e os SLOs candidatos da camada analítica estão em
+[`analytics-operations.md`](analytics-operations.md) e
+[`analytics-benchmark.md`](analytics-benchmark.md).
+
 ## Métricas operacionais
 
 No Railway, CPU, memória, reinícios e rede são providos pela plataforma. Contagens e latências de negócio são derivadas dos campos estruturados dos logs (`event`, `status_code`, `duration_ms`, `outcome`) sem PII em labels. Antes de produção, devem ser configurados painéis e alertas para:
@@ -25,6 +38,7 @@ No Railway, CPU, memória, reinícios e rede são providos pela plataforma. Cont
 - duração e falha de migrations;
 - onboarding iniciado/concluído/falhado;
 - acessos negados por permissão.
+- lag/qualidade analítica, falha ou estagnação de refresh, p95 analítico, cache e crescimento de storage.
 
 Não são usados e-mail, user ID, tenant ID, IP, token ou correlation ID como labels de cardinalidade não controlada.
 

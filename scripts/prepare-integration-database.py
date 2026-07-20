@@ -77,7 +77,13 @@ def main() -> None:
                 "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {}"
             ).format(sql.Identifier(role_name))
         )
-        for protected_table in ("permissions", "terms_versions"):
+        for protected_table in (
+            "connector_definitions",
+            "permissions",
+            "terms_versions",
+            "diagnostic_action_catalog_snapshots",
+            "diagnostic_action_catalog_entries",
+        ):
             cursor.execute(
                 sql.SQL("REVOKE INSERT, UPDATE, DELETE ON {} FROM {}").format(
                     sql.Identifier(protected_table), sql.Identifier(role_name)

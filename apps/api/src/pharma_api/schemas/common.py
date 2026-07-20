@@ -12,3 +12,9 @@ class Page[T](BaseModel):
     total: int = Field(ge=0)
     limit: int = Field(ge=1, le=100)
     offset: int = Field(ge=0)
+
+
+class CursorPage[T](BaseModel):
+    items: list[T]
+    next_cursor: str | None = None
+    limit: int = Field(ge=1, le=100)

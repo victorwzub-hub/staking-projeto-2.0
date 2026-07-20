@@ -52,7 +52,14 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     import asyncio
+    import sys
 
+    if sys.platform == "win32":
+        # psycopg async connections require a selector loop on Windows; the default
+        # ProactorEventLoop cannot wait on PostgreSQL sockets.
+        with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+            runner.run(run_async_migrations())
+        return
     asyncio.run(run_async_migrations())
 
 

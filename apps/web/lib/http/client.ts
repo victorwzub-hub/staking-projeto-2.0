@@ -71,7 +71,10 @@ export async function apiRequest<T>(
   headers.set("Accept", "application/json");
   headers.set("X-Correlation-ID", correlationId);
 
-  if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  const isFormData = typeof FormData !== "undefined" && init.body instanceof FormData;
+  if (init.body && !isFormData && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
   if (UNSAFE_METHODS.has(method) && !headers.has("X-CSRF-Token")) {
     const csrf = readCookie("pharma_csrf");
     if (csrf) headers.set("X-CSRF-Token", csrf);

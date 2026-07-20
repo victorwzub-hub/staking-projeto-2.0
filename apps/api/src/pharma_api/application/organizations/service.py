@@ -562,12 +562,28 @@ async def create_invitation(
     )
 
     normalized_email = normalize_email(email)
+    now = datetime.now(UTC)
+    expired_invitations = (
+        await session.scalars(
+            select(Invitation)
+            .where(
+                Invitation.tenant_id == tenant_id,
+                Invitation.normalized_email == normalized_email,
+                Invitation.status == "pending",
+                Invitation.expires_at <= now,
+            )
+            .with_for_update()
+        )
+    ).all()
+    for expired_invitation in expired_invitations:
+        expired_invitation.status = "expired"
+        expired_invitation.version += 1
     pending = await session.scalar(
         select(Invitation).where(
             Invitation.tenant_id == tenant_id,
             Invitation.normalized_email == normalized_email,
             Invitation.status == "pending",
-            Invitation.expires_at > datetime.now(UTC),
+            Invitation.expires_at > now,
         )
     )
     if pending is not None:
@@ -577,7 +593,6 @@ async def create_invitation(
             status_code=409,
         )
 
-    now = datetime.now(UTC)
     raw_token = generate_token()
     invitation = Invitation(
         id=uuid4(),
@@ -609,6 +624,7 @@ async def create_invitation(
             correlation_id=correlation_id,
         ),
     )
+    await session.flush()
     return invitation, invitation_email(email, raw_token, str(invitation.id), config)
 
 

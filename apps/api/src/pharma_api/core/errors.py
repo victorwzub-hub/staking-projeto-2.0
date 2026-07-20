@@ -71,12 +71,21 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def handle_integrity_error(request: Request, exc: IntegrityError) -> JSONResponse:
         original = getattr(exc, "orig", None)
         diagnostic = getattr(original, "diag", None)
+        constraint = getattr(diagnostic, "constraint_name", None)
         logger.warning(
             "database_integrity_error",
             method=request.method,
             path=request.url.path,
-            constraint=getattr(diagnostic, "constraint_name", None),
+            constraint=constraint,
         )
+        if constraint == "uq_invitations_pending_tenant_email":
+            return JSONResponse(
+                status_code=409,
+                content=_payload(
+                    "invitation_already_pending",
+                    "An active invitation already exists for this email",
+                ),
+            )
         return JSONResponse(
             status_code=409,
             content=_payload(

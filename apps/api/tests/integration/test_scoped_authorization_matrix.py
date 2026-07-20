@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -730,8 +731,8 @@ async def test_database_rejects_mismatched_role_and_branch_scope() -> None:
                 now=now,
             )
             branch_role = await _role_id(connection, "branch_manager")
-            async with connection.begin_nested():
-                with pytest.raises(IntegrityError):
+            with pytest.raises(IntegrityError):
+                async with connection.begin_nested():
                     await _assign_role(
                         connection,
                         tenant_id=hierarchy.tenant_id,
@@ -742,5 +743,55 @@ async def test_database_rejects_mismatched_role_and_branch_scope() -> None:
                         branch_id=hierarchy.branch_a1,
                         now=now,
                     )
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_database_allows_only_one_concurrent_pending_invitation_per_tenant_email() -> None:
+    engine = create_async_engine(os.environ["TEST_ADMIN_DATABASE_URL"])
+    now = datetime.now(UTC)
+    creator_id: UUID
+    hierarchy: Hierarchy
+    role_id: UUID
+    try:
+        async with engine.begin() as connection:
+            creator_id = await _insert_user(
+                connection,
+                email=f"concurrent-inviter-{uuid4()}@example.com",
+                display_name="Concurrent inviter",
+                now=now,
+            )
+            hierarchy = await _seed_hierarchy(connection, creator_id, now)
+            role_id = await _role_id(connection, "viewer")
+
+        async def insert_invitation(token_hash: str) -> None:
+            async with engine.begin() as connection:
+                await connection.execute(
+                    text(
+                        "INSERT INTO invitations "
+                        "(id,tenant_id,normalized_email,token_hash,role_id,status,expires_at,"
+                        "created_by_user_id,created_at,updated_at,version) "
+                        "VALUES (:id,:tenant,:email,:token,:role,'pending',:expires,:creator,"
+                        ":now,:now,1)"
+                    ),
+                    {
+                        "id": uuid4(),
+                        "tenant": hierarchy.tenant_id,
+                        "email": "one-pending-invitation@example.com",
+                        "token": token_hash,
+                        "role": role_id,
+                        "expires": now + timedelta(hours=1),
+                        "creator": creator_id,
+                        "now": now,
+                    },
+                )
+
+        results = await asyncio.gather(
+            *(insert_invitation(f"token-{uuid4()}") for _ in range(8)),
+            return_exceptions=True,
+        )
+        assert sum(isinstance(result, IntegrityError) for result in results) == 7
+        assert sum(result is None for result in results) == 1
     finally:
         await engine.dispose()

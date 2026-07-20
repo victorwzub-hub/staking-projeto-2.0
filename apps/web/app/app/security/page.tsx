@@ -16,14 +16,15 @@ export default function SecurityPage() {
   const submit = useSubmit<MessageResponse>();
   async function changePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const result = await submit.run(() =>
       apiJson("auth/change-password", "POST", {
         current_password: form.get("current_password"),
         new_password: form.get("new_password"),
       }),
     );
-    if (result) event.currentTarget.reset();
+    if (result) formElement.reset();
   }
   return (
     <>

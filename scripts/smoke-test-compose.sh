@@ -88,6 +88,8 @@ echo "+ docker compose up --detach"
 
 wait_for_container postgres healthy
 wait_for_container redis healthy
+wait_for_container minio healthy
+wait_for_container minio-init completed
 wait_for_container migrate completed
 wait_for_container api healthy
 wait_for_container worker healthy
@@ -110,14 +112,23 @@ wait_for_http_200 "http://127.0.0.1:${WEB_PORT:-3000}"
 
 curl --silent --show-error --fail "http://127.0.0.1:${API_PORT:-8000}/api/v1/health" | grep --quiet '"status":"ok"'
 curl --silent --show-error --fail "http://127.0.0.1:${API_PORT:-8000}/api/v1/readiness" | grep --quiet '"status":"ready"'
-"${COMPOSE[@]}" exec -T web test -f /app/apps/web/server.js
+"${COMPOSE[@]}" exec -T web node -e \
+  "const fs=require('node:fs'); if (!fs.existsSync('/app/apps/web/server.js')) process.exit(1)"
 "${COMPOSE[@]}" exec -T web node -e \
   "fetch('http://api:8000/api/v1/health').then(r => r.json()).then(b => { if (b.status !== 'ok') process.exit(1) })"
 
 # Verify migrations can be executed repeatedly under the advisory lock.
 "${COMPOSE[@]}" run --rm migrate
 "${COMPOSE[@]}" run --rm migrate
-"${COMPOSE[@]}" exec -T api alembic -c /app/alembic.ini current | grep --quiet '20260716_0001'
+migration_head="$(${COMPOSE[@]} exec -T postgres psql \
+  --username "${POSTGRES_ADMIN_USER:-pharma_admin}" \
+  --dbname "${POSTGRES_DB:-pharma}" \
+  --tuples-only --no-align \
+  --command "SELECT version_num FROM alembic_version" | tr -d '\r')"
+[[ "$migration_head" == "20260718_0004" ]] || {
+  echo "Unexpected Alembic head: $migration_head" >&2
+  exit 1
+}
 
 # Prove the worker consumes a real Redis-backed Dramatiq task.
 probe="compose-$(date +%s)"
@@ -125,7 +136,7 @@ probe="compose-$(date +%s)"
   "from pharma_api.infrastructure.email.tasks import system_ping; system_ping.send('$probe')"
 wait_for_redis_key "worker:probe:$probe"
 
-expected_running=(postgres redis api worker web)
+expected_running=(postgres redis minio api worker web)
 running_services="$("${COMPOSE[@]}" ps --status running --services)"
 for service in "${expected_running[@]}"; do
   grep --fixed-strings --line-regexp --quiet "$service" <<<"$running_services" || {

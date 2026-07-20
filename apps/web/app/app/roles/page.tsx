@@ -27,7 +27,8 @@ export default function RolesPage() {
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const result = await submit.run(() =>
       apiJson<Role>("roles", "POST", {
         name: form.get("name"),
@@ -38,14 +39,15 @@ export default function RolesPage() {
       }),
     );
     if (result) {
-      event.currentTarget.reset();
+      formElement.reset();
       await roles.reload();
     }
   }
 
   async function assign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const result = await submit.run(() =>
       apiJson<MessageResponse>("roles/assignments", "POST", {
         membership_id: form.get("membership_id"),
@@ -55,7 +57,7 @@ export default function RolesPage() {
       }),
     );
     if (result) {
-      event.currentTarget.reset();
+      formElement.reset();
       await assignments.reload();
     }
   }

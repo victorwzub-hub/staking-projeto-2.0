@@ -41,6 +41,32 @@ Todos os endpoints usam `/api/v1`, schemas Pydantic, correlation ID e formato co
 
 `/platform/tenants`, `/platform/users` e `/platform/users/{id}/status` exigem `platform.admin` e auditoria. Suspensão revoga sessões ativas.
 
+## Integrações e dados canônicos (Etapa 2B)
+
+Todas as rotas abaixo usam o prefixo `/integrations`, respeitam o contexto de tenant/empresa/filial e exigem as permissões granulares `integration.*`, `data.*`, `quality.*` ou `lineage.*` indicadas no OpenAPI.
+
+- Catálogo e configuração: `/connectors`, `/credential-references`, `/sources`, `/sources/{id}/test`, `/mappings` e `/mappings/validate`;
+- ingestão: `/sources/{id}/sync` aceita `Idempotency-Key`, enquanto `/sources/{id}/upload` recebe `multipart/form-data` por streaming;
+- operação: `/batches`, `/batches/{id}`, `/cancel`, `/reprocess`, `/errors`, `/rejections`, `/quality`, `/lineage` e `/report.csv`;
+- dados brutos: `/batches/{id}/raw` e `/raw/download` exigem permissão especial e geram evento de auditoria;
+- observabilidade: `/observability` agrega execução, backlog, dead letter, volume, throughput e qualidade;
+- consumo canônico: `/canonical/products`, `/suppliers`, `/sales`, `/purchases`, `/inventory` e `/prices`, todos com paginação por cursor opaco.
+
+## Analytics e camada semântica (Etapa 2C)
+
+Rotas sob `/analytics` exigem `analytics.view` e mantêm tenant/grants/filtros no servidor. Métricas financeiras exigem `analytics.financial`; detalhe, exportação, metas e operação exigem permissões dedicadas.
+
+- catálogo/consulta: `/kpis`, `/kpis/{code}`, `/results`, `/kpis/{code}/result` e `/comparisons`;
+- análise: `/timeseries`, `/ranking`, `/composition` e `/drilldown`;
+- contexto: `/filters`, `/dimensions/{type}`, `/freshness`, `/quality` e `/observability`;
+- metas: `/goals`, `/goals/{id}` e `/goals/{id}/history`;
+- operação: `/refresh`, `/refresh/{id}` e `/refresh/{id}/cancel`, com modo `backfill` ou `recompute` no payload;
+- exportação: `/export.csv` aplica rate limit, auditoria, escopo, limite de linhas e proteção contra formula injection.
+
+Resultados trazem versão de fórmula/dados, freshness, qualidade e cache. Comparações incluem período anterior, ano anterior, média móvel, rede autorizada e categoria quando aplicável. O catálogo não expõe valores financeiros sem a permissão correspondente.
+
+O artefato versionado `docs/openapi/phase2-openapi.json` é gerado diretamente da aplicação e contém os schemas completos das rotas publicadas.
+
 ## Erros
 
 Respostas não revelam a existência de recurso de outro tenant. Erros de autenticação, autorização, conflito, validação e rate limit usam código estável, mensagem segura e detalhes JSON serializáveis.

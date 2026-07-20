@@ -19,7 +19,8 @@ export default function TeamsPage() {
   const [selected, setSelected] = useState<string>("");
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const result = await submit.run(() =>
       apiJson<Team>("teams", "POST", {
         name: form.get("name"),
@@ -27,7 +28,7 @@ export default function TeamsPage() {
       }),
     );
     if (result) {
-      event.currentTarget.reset();
+      formElement.reset();
       await teams.reload();
     }
   }

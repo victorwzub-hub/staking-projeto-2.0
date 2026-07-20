@@ -17,12 +17,13 @@ export default function EconomicGroupsPage() {
   const submit = useSubmit<EconomicGroup | MessageResponse>();
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const result = await submit.run(() =>
       apiJson<EconomicGroup>("economic-groups", "POST", { name: form.get("name") }),
     );
     if (result) {
-      event.currentTarget.reset();
+      formElement.reset();
       await groups.reload();
     }
   }
