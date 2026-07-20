@@ -1,21 +1,52 @@
 name: pharma-intelligence
 
+x-backend-environment: &backend-environment
+  APP_ENV: ${APP_ENV:-development}
+  APP_DEBUG: ${APP_DEBUG:-false}
+  APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+  FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://pharma_app:change-me-app-local-only@postgres:5432/pharma}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  API_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+  SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+  SESSION_COOKIE_SAMESITE: ${SESSION_COOKIE_SAMESITE:-lax}
+  SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN:-}
+  SESSION_TOKEN_PEPPER: ${SESSION_TOKEN_PEPPER:-development-session-pepper-change-me}
+  ONE_TIME_TOKEN_PEPPER: ${ONE_TIME_TOKEN_PEPPER:-development-token-pepper-change-me}
+  PUBLIC_AUTH_MAX_REQUESTS: ${PUBLIC_AUTH_MAX_REQUESTS:-5}
+  PUBLIC_AUTH_WINDOW_SECONDS: ${PUBLIC_AUTH_WINDOW_SECONDS:-900}
+  EMAIL_BACKEND: ${EMAIL_BACKEND:-development}
+  EMAIL_SPOOL_DIRECTORY: ${EMAIL_SPOOL_DIRECTORY:-/app/.local/emails}
+  OBJECT_STORAGE_BACKEND: ${OBJECT_STORAGE_BACKEND:-s3}
+  S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
+  S3_BUCKET: ${S3_BUCKET:-pharma-landing}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-pharma-minio-local}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-change-me-minio-local-only}
+  S3_SERVER_SIDE_ENCRYPTION: ${S3_SERVER_SIDE_ENCRYPTION:-}
+  INTEGRATION_UPLOAD_MAX_BYTES: ${INTEGRATION_UPLOAD_MAX_BYTES:-104857600}
+  INTEGRATION_CHUNK_RECORDS: ${INTEGRATION_CHUNK_RECORDS:-1000}
+  INTEGRATION_RETENTION_DAYS: ${INTEGRATION_RETENTION_DAYS:-90}
+
 services:
   postgres:
     image: postgres:17-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-pharma}
-      POSTGRES_USER: ${POSTGRES_USER:-pharma}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-pharma_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-change-me-admin-local-only}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-pharma_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-change-me-app-local-only}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres-init-create-app-role.sh:/docker-entrypoint-initdb.d/001-create-app-role.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pharma} -d ${POSTGRES_DB:-pharma}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ADMIN_USER:-pharma_admin} -d ${POSTGRES_DB:-pharma}"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 20
     restart: unless-stopped
 
   redis:
@@ -29,24 +60,72 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 20
     restart: unless-stopped
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-pharma-minio-local}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-change-me-minio-local-only}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        mc alias set local http://minio:9000
+        ${S3_ACCESS_KEY_ID:-pharma-minio-local}
+        ${S3_SECRET_ACCESS_KEY:-change-me-minio-local-only} &&
+        mc mb --ignore-existing local/${S3_BUCKET:-pharma-landing} &&
+        mc anonymous set none local/${S3_BUCKET:-pharma-landing}
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    env_file: .env
+    environment:
+      <<: *backend-environment
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:-postgresql+psycopg://pharma_admin:change-me-admin-local-only@postgres:5432/pharma}
+      DATABASE_APPLICATION_ROLE: ${POSTGRES_APP_USER:-pharma_app}
+    command: ["pharma-migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
 
   api:
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
     env_file: .env
-    environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://pharma:change-me-local-only@postgres:5432/pharma}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    environment: *backend-environment
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
@@ -57,7 +136,7 @@ services:
         ]
       interval: 10s
       timeout: 3s
-      retries: 10
+      retries: 20
     restart: unless-stopped
 
   worker:
@@ -66,13 +145,27 @@ services:
       dockerfile: infra/docker/worker.Dockerfile
     env_file: .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://pharma:change-me-local-only@postgres:5432/pharma}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      <<: *backend-environment
+      DRAMATIQ_PROCESSES: ${DRAMATIQ_PROCESSES:-1}
+      DRAMATIQ_THREADS: ${DRAMATIQ_THREADS:-4}
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from redis import Redis; import os; r=Redis.from_url(os.environ['REDIS_URL']); assert r.ping()",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 20
     restart: unless-stopped
 
   web:
@@ -81,8 +174,7 @@ services:
       dockerfile: infra/docker/web.Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1}
-    environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1}
+        NEXT_PUBLIC_API_TIMEOUT_MS: ${NEXT_PUBLIC_API_TIMEOUT_MS:-10000}
     ports:
       - "${WEB_PORT:-3000}:3000"
     depends_on:
@@ -98,9 +190,10 @@ services:
         ]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
     restart: unless-stopped
 
 volumes:
+  minio_data:
   postgres_data:
   redis_data:

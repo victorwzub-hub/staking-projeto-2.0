@@ -1,0 +1,20 @@
+title = "Pharma Intelligence SaaS Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+  [[rules.allowlists]]
+  description = "Deterministic test-only token peppers"
+  condition = "AND"
+  regexTarget = "line"
+  regexes = [
+    '''(?i)\b(?:session_token_pepper|one_time_token_pepper)\b''',
+  ]
+  paths = [
+    '''^apps/api/tests/(?:test_config|test_security|test_application|test_session_services)\.py$''',
+    # Historical source patch containing the same deterministic test fixtures.
+    '''^pharma-intelligence-saas-phase2-[a-f0-9]+\.patch$''',
+  ]

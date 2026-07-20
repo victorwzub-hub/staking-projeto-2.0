@@ -6,7 +6,9 @@ import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "@/lib/http/client";
 
 type ApiStatusState =
-  { kind: "loading" } | { kind: "success"; health: HealthResponse } | { kind: "error" };
+  | { kind: "loading" }
+  | { kind: "success"; health: HealthResponse }
+  | { kind: "error"; message: string };
 
 function requestHealth(): Promise<HealthResponse> {
   return apiRequest<HealthResponse>("health", { cache: "no-store" });
@@ -24,9 +26,15 @@ export function ApiStatus() {
           setState({ kind: "success", health });
         }
       },
-      () => {
+      (error: unknown) => {
         if (active) {
-          setState({ kind: "error" });
+          setState({
+            kind: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Não foi possível confirmar a disponibilidade do serviço.",
+          });
         }
       },
     );
@@ -40,7 +48,14 @@ export function ApiStatus() {
     setState({ kind: "loading" });
     void requestHealth().then(
       (health) => setState({ kind: "success", health }),
-      () => setState({ kind: "error" }),
+      (error: unknown) =>
+        setState({
+          kind: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Não foi possível confirmar a disponibilidade do serviço.",
+        }),
     );
   }, []);
 
@@ -69,10 +84,8 @@ export function ApiStatus() {
             <h2>API indisponível</h2>
           </div>
         </div>
-        <p className="api-status-copy">
-          Não foi possível confirmar a disponibilidade do serviço. Nenhum estado de sucesso foi
-          presumido.
-        </p>
+        <p className="api-status-copy">{state.message}</p>
+        <p className="api-status-copy">Nenhum estado de sucesso foi presumido.</p>
         <button className="button" type="button" onClick={retry}>
           Tentar novamente
         </button>

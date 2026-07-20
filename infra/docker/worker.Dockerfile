@@ -16,7 +16,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
-RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin appuser
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin appuser \
+    && mkdir -p /app/.local/emails \
+    && chown -R appuser:appuser /app
 WORKDIR /app
 
 COPY --from=builder /wheels /wheels

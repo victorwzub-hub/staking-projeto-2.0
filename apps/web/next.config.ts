@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   transpilePackages: ["@pharma/contracts"],
+  experimental: {
+    cpus: 2,
+  },
 };
 
 export default nextConfig;

@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 
 from pharma_api.core.logging import get_logger
 
@@ -64,6 +65,32 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=422,
             content=_payload("validation_error", "Request validation failed", exc.errors()),
+        )
+
+    @app.exception_handler(IntegrityError)
+    async def handle_integrity_error(request: Request, exc: IntegrityError) -> JSONResponse:
+        original = getattr(exc, "orig", None)
+        diagnostic = getattr(original, "diag", None)
+        constraint = getattr(diagnostic, "constraint_name", None)
+        logger.warning(
+            "database_integrity_error",
+            method=request.method,
+            path=request.url.path,
+            constraint=constraint,
+        )
+        if constraint == "uq_invitations_pending_tenant_email":
+            return JSONResponse(
+                status_code=409,
+                content=_payload(
+                    "invitation_already_pending",
+                    "An active invitation already exists for this email",
+                ),
+            )
+        return JSONResponse(
+            status_code=409,
+            content=_payload(
+                "resource_conflict", "The operation conflicts with an existing resource"
+            ),
         )
 
     @app.exception_handler(Exception)

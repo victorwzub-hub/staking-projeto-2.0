@@ -1,20 +1,33 @@
-from __future__ import annotations
-
-import dramatiq
-
-from pharma_api.core.config import get_settings
-from pharma_api.core.logging import configure_logging, get_logger
-from pharma_worker.broker import configure_broker
+from pharma_api.infrastructure.analytics.tasks import enqueue_batch_analytics, refresh_analytics
+from pharma_api.infrastructure.email.tasks import deliver_email, system_ping
+from pharma_api.infrastructure.integrations.tasks import (
+    acquire_batch,
+    cleanup_expired_landing,
+    finalize_batch,
+    load_batch,
+    map_batch,
+    normalize_batch,
+    parse_batch,
+    publish_outbox,
+    validate_batch,
+)
+from pharma_api.infrastructure.messaging.broker import configure_broker
 
 broker = configure_broker()
-configure_logging(get_settings().app_log_level)
-logger = get_logger(__name__)
 
-
-@dramatiq.actor(queue_name="system", max_retries=3, min_backoff=1_000)
-def system_ping(message: str = "pong") -> str:
-    logger.info("worker_system_ping", message=message)
-    return message
-
-
-__all__ = ["broker", "system_ping"]
+__all__ = [
+    "acquire_batch",
+    "broker",
+    "cleanup_expired_landing",
+    "deliver_email",
+    "enqueue_batch_analytics",
+    "finalize_batch",
+    "load_batch",
+    "map_batch",
+    "normalize_batch",
+    "parse_batch",
+    "publish_outbox",
+    "refresh_analytics",
+    "system_ping",
+    "validate_batch",
+]

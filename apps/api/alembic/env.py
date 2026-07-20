@@ -8,6 +8,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from pharma_api.core.config import get_settings
+from pharma_api.infrastructure.db import all_models  # noqa: F401
 from pharma_api.infrastructure.db.base import Base
 
 config = context.config
@@ -51,7 +52,14 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     import asyncio
+    import sys
 
+    if sys.platform == "win32":
+        # psycopg async connections require a selector loop on Windows; the default
+        # ProactorEventLoop cannot wait on PostgreSQL sockets.
+        with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+            runner.run(run_async_migrations())
+        return
     asyncio.run(run_async_migrations())
 
 

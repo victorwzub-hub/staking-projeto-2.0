@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "dashboard": "pharma-analytics-phase2c",
+  "title": "Pharma Analytics — Etapa 2C",
+  "source": {
+    "type": "authenticated-json-api-and-structured-logs",
+    "endpoint": "/api/v1/analytics/observability",
+    "refresh_seconds": 60,
+    "required_permission": "analytics.view"
+  },
+  "variables": [
+    {
+      "name": "environment",
+      "values": ["staging", "production"]
+    },
+    {
+      "name": "scope",
+      "values": ["authorized"]
+    }
+  ],
+  "panels": [
+    {
+      "title": "Freshness and data version",
+      "type": "stat",
+      "fields": ["analytical_lag_seconds", "data_version", "quality_score"]
+    },
+    {
+      "title": "Refresh jobs",
+      "type": "timeseries",
+      "fields": [
+        "refresh_queued",
+        "refresh_running",
+        "refresh_completed",
+        "refresh_failed",
+        "refresh_cancelled"
+      ]
+    },
+    {
+      "title": "Refresh duration",
+      "type": "timeseries",
+      "fields": ["average_job_duration_seconds"]
+    },
+    {
+      "title": "Semantic cache",
+      "type": "timeseries",
+      "fields": ["cache_requests", "cache_hits", "cache_misses", "cache_hit_rate"]
+    },
+    {
+      "title": "Analytical volume",
+      "type": "timeseries",
+      "fields": ["facts", "aggregates", "facts_table_bytes", "aggregates_table_bytes"]
+    },
+    {
+      "title": "Maintenance activity",
+      "type": "timeseries",
+      "fields": ["backfills", "recomputations"]
+    },
+    {
+      "title": "Worker outcomes",
+      "type": "log-count",
+      "events": ["analytics_refresh_completed", "analytics_refresh_failed"],
+      "group_by": ["event", "trigger_type"]
+    },
+    {
+      "title": "HTTP analytical latency",
+      "type": "latency",
+      "event": "http_request_completed",
+      "route_prefix": "/api/v1/analytics",
+      "percentiles": [50, 95, 99]
+    }
+  ],
+  "privacy": {
+    "prohibited_labels": [
+      "tenant_id",
+      "user_id",
+      "email",
+      "ip",
+      "correlation_id",
+      "refresh_job_id"
+    ],
+    "correlation_fields_are_log_only": true
+  }
+}

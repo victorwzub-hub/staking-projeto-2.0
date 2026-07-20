@@ -2,10 +2,10 @@ SHELL := /bin/bash
 PYTHON := .venv/bin/python
 PIP := .venv/bin/pip
 
-.PHONY: help bootstrap install-backend install-frontend lint typecheck test build e2e e2e-list smoke up down logs migrate clean
+.PHONY: help bootstrap install-backend install-frontend lint typecheck test build e2e e2e-list openapi smoke up down logs migrate clean
 
 help:
-	@echo "Targets: bootstrap lint typecheck test build e2e-list smoke up down logs migrate clean"
+	@echo "Targets: bootstrap lint typecheck test build e2e-list openapi smoke up down logs migrate clean"
 
 bootstrap: install-backend install-frontend
 	@test -f .env || cp .env.example .env
@@ -20,8 +20,8 @@ install-frontend:
 	npm ci
 
 lint:
-	$(PYTHON) -m ruff check apps/api apps/worker
-	$(PYTHON) -m ruff format --check apps/api apps/worker
+	$(PYTHON) -m ruff check apps/api apps/worker scripts/prepare-integration-database.py scripts/generate-openapi.py
+	$(PYTHON) -m ruff format --check apps/api apps/worker scripts/prepare-integration-database.py scripts/generate-openapi.py
 	npm run lint
 	npm run format:check
 
@@ -41,6 +41,9 @@ e2e:
 
 e2e-list:
 	npm run test:e2e:list
+
+openapi:
+	$(PYTHON) scripts/generate-openapi.py
 
 smoke:
 	./scripts/smoke-test-compose.sh

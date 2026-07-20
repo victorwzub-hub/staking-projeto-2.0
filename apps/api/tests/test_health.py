@@ -25,7 +25,7 @@ def test_liveness_returns_service_metadata(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
-    assert response.json()["version"] == "0.1.1"
+    assert response.json()["version"] == "0.2.0"
     assert response.headers["X-Correlation-ID"]
 
 

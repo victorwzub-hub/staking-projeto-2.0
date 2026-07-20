@@ -13,6 +13,7 @@ from pharma_api.core.errors import register_exception_handlers
 from pharma_api.core.logging import configure_logging, get_logger
 from pharma_api.infrastructure.cache.redis import close_redis_client
 from pharma_api.infrastructure.db.session import close_engine
+from pharma_api.infrastructure.object_storage import close_object_storage
 from pharma_api.middleware.correlation_id import correlation_id_middleware
 from pharma_api.schemas.service import ServiceResponse
 
@@ -32,6 +33,7 @@ def _build_lifespan(
         try:
             yield
         finally:
+            close_object_storage()
             await close_redis_client()
             await close_engine()
             logger.info("application_stopped")
@@ -58,9 +60,15 @@ def create_app(app_settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_credentials=False,
+        allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-Correlation-ID"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "X-Correlation-ID",
+            "X-CSRF-Token",
+            "Idempotency-Key",
+        ],
     )
     register_exception_handlers(app)
 

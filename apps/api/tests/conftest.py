@@ -1,9 +1,14 @@
+import asyncio
+import sys
 from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
 
 from pharma_api.main import create_app
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 @pytest.fixture

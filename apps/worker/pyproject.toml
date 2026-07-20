@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pharma-worker"
-version = "0.1.1"
-description = "Dramatiq worker for the Pharma Intelligence SaaS"
+version = "0.2.0"
+description = "Dramatiq worker for identity e-mails and operational jobs"
 requires-python = ">=3.12"
 dependencies = [
   "dramatiq[redis]==2.2.0",
-  "pharma-api==0.1.1"
+  "pharma-api==0.2.0"
 ]
 
 [project.optional-dependencies]
