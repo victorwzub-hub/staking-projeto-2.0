@@ -4,7 +4,7 @@ import ast
 import json
 from dataclasses import FrozenInstanceError, replace
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any, Literal, cast
 from uuid import UUID
@@ -76,6 +76,7 @@ def _observation(
     quality: str = "1",
     coverage: str = "1",
     data_version: int = 11,
+    formula_version: int = 1,
     lineage: str | None = "lineage://sales/net-revenue",
     period_start: datetime = WINDOW_START,
     period_end: datetime = WINDOW_END,
@@ -87,6 +88,7 @@ def _observation(
         quality_score=Decimal(quality),
         coverage=Decimal(coverage),
         data_version=data_version,
+        formula_version=formula_version,
         lineage_ref=lineage,
         period_start=period_start,
         period_end=period_end,
@@ -105,6 +107,7 @@ def _rule(
     condition_hash: str | None = None,
     definition_hash: str | None = None,
     base_severity: Literal["info", "low", "medium", "high", "critical"] = "high",
+    controls: object | None = None,
 ) -> RuleSnapshot:
     evidence_items = (
         (
@@ -158,7 +161,7 @@ def _rule(
         primary_kpi_code="sales.net_revenue",
         condition_document=_condition() if condition is None else condition,
         declared_kpi_codes=declared_kpis,
-        controls_document={},
+        controls_document={} if controls is None else controls,
         actions=action_items,
         evidence=evidence_items,
         hypotheses=hypothesis_items,
@@ -210,6 +213,21 @@ def test_matched_rule_produces_diagnostic_evidence_hypothesis_and_advisory_actio
     assert result.recommendations[0].execution_mode == "human_review_required"
     assert result.recommendations[0].requires_human_review is True
     assert result.recommendations[0].allows_automatic_financial_execution is False
+    assert result.confidence_breakdown is not None
+    assert result.confidence_breakdown.final_score == result.diagnostic.confidence_score
+    assert result.priority_breakdown is not None
+    assert result.priority_breakdown.final_priority == result.diagnostic.priority
+    assert result.trace[1].as_dict()["resolved_values"] == {
+        "left": {
+            "operand": {"kpi_code": "sales.net_revenue", "type": "kpi"},
+            "value": "80",
+        },
+        "operator": "lt",
+        "right": {
+            "operand": {"kpi_code": "sales.net_revenue", "type": "previous"},
+            "value": "100",
+        },
+    }
 
 
 def test_same_semantic_input_and_different_observation_order_are_identical() -> None:
@@ -294,14 +312,75 @@ def test_missing_required_measurement_is_skipped_with_stable_code() -> None:
     assert result.issue.code == "missing_kpi"
 
 
-def test_indeterminate_condition_is_not_reported_as_not_matched() -> None:
+def test_any_of_can_match_when_an_unneeded_branch_is_indeterminate() -> None:
+    condition = {
+        "type": "any_of",
+        "nodes": [
+            {
+                "type": "compare",
+                "left": {"type": "kpi", "kpi_code": "sales.net_revenue"},
+                "op": "lt",
+                "right": {"type": "previous", "kpi_code": "sales.net_revenue"},
+            },
+            {
+                "type": "compare",
+                "left": {"type": "kpi", "kpi_code": "inventory.zero_stock_rate"},
+                "op": "gt",
+                "right": {"type": "fixed", "value": "0"},
+            },
+        ],
+    }
+    rule = _rule(
+        condition=condition,
+        declared_kpis=("sales.net_revenue", "inventory.zero_stock_rate"),
+    )
+
+    result = evaluate_rule(_evaluation(rule=rule))
+
+    assert result.state == "matched"
+    assert [entry.outcome for entry in result.trace] == ["true", "true", "indeterminate"]
+    assert result.confidence_breakdown is not None
+    assert result.confidence_breakdown.measurement_completeness < Decimal("1")
+    assert result.confidence_breakdown.final_score == Decimal("0.7000")
+
+
+def test_all_of_can_be_not_matched_when_an_unneeded_branch_is_indeterminate() -> None:
+    condition = {
+        "type": "all_of",
+        "nodes": [
+            {
+                "type": "compare",
+                "left": {"type": "kpi", "kpi_code": "sales.net_revenue"},
+                "op": "gt",
+                "right": {"type": "previous", "kpi_code": "sales.net_revenue"},
+            },
+            {
+                "type": "compare",
+                "left": {"type": "kpi", "kpi_code": "inventory.zero_stock_rate"},
+                "op": "gt",
+                "right": {"type": "fixed", "value": "0"},
+            },
+        ],
+    }
+    rule = _rule(
+        condition=condition,
+        declared_kpis=("sales.net_revenue", "inventory.zero_stock_rate"),
+    )
+
+    result = evaluate_rule(_evaluation(rule=rule))
+
+    assert result.state == "not_matched"
+    assert [entry.outcome for entry in result.trace] == ["false", "false", "indeterminate"]
+
+
+def test_explicitly_missing_required_value_is_reported_as_missing_kpi() -> None:
     result = evaluate_rule(
         _evaluation(observations=(_observation(None), _observation("100", kind="previous")))
     )
 
     assert result.state == "skipped"
     assert result.issue is not None
-    assert result.issue.code == "condition_not_evaluable"
+    assert result.issue.code == "missing_kpi"
 
 
 def test_float_observation_values_are_rejected() -> None:
@@ -312,6 +391,22 @@ def test_float_observation_values_are_rejected() -> None:
             period_start=WINDOW_START,
             period_end=WINDOW_END,
             data_version=11,
+        )
+
+
+@pytest.mark.parametrize("value", [Decimal("1000000000000001"), Decimal("1.000000001")])
+def test_observation_values_are_bounded_for_safe_canonicalization(value: Decimal) -> None:
+    with pytest.raises(DiagnosticEngineValidationError):
+        replace(_observation("80"), value=value)
+
+
+def test_boolean_action_priority_is_rejected() -> None:
+    with pytest.raises(DiagnosticEngineValidationError, match="integer between 1 and 4"):
+        ActionReference(
+            action_code="sales.revenue_drop_review",
+            action_version=1,
+            rationale="Revisar a queda sob autorização humana.",
+            suggested_priority=cast(int, True),
         )
 
 
@@ -389,6 +484,21 @@ def test_data_version_mismatch_is_skipped() -> None:
     assert result.issue.code == "data_version_mismatch"
 
 
+def test_formula_version_mismatch_is_skipped() -> None:
+    result = evaluate_rule(
+        _evaluation(
+            observations=(
+                _observation("80", formula_version=1),
+                _observation("100", kind="previous", formula_version=2),
+            )
+        )
+    )
+
+    assert result.state == "skipped"
+    assert result.issue is not None
+    assert result.issue.code == "formula_version_mismatch"
+
+
 def test_insufficient_quality_prevents_a_diagnosis() -> None:
     result = evaluate_rule(
         _evaluation(
@@ -445,6 +555,36 @@ def test_confidence_is_bounded_and_reaches_governed_upper_limit() -> None:
     assert result.diagnostic is not None
     assert result.diagnostic.confidence_score == Decimal("1.0000")
     assert Decimal("0") <= result.diagnostic.confidence_score <= Decimal("1")
+
+
+def test_primary_reference_uses_the_first_reference_bearing_evidence() -> None:
+    evidence = (
+        EvidenceSpec(
+            evidence_code="sales.revenue_value",
+            evidence_type="kpi_value",
+            kpi_code="sales.net_revenue",
+            observation_key="sales.net_revenue",
+            direction="not_applicable",
+            relation="context",
+            detail="Valor atual da receita líquida.",
+        ),
+        EvidenceSpec(
+            evidence_code="sales.revenue_comparison",
+            evidence_type="comparison",
+            kpi_code="sales.net_revenue",
+            observation_key="sales.net_revenue",
+            reference_key="previous:sales.net_revenue",
+            direction="below",
+            relation="supports",
+            detail="Comparação com o período anterior.",
+        ),
+    )
+
+    result = evaluate_rule(_evaluation(rule=_rule(evidence=evidence, hypotheses=())))
+
+    assert result.state == "matched"
+    assert result.diagnostic is not None
+    assert result.diagnostic.reference_value == Decimal("100")
 
 
 def test_priority_is_deterministic_and_uses_severity_action_impact_and_confidence() -> None:
@@ -530,9 +670,27 @@ def test_persisted_condition_consumes_history_without_requiring_current_baseline
             "right": {"type": "previous", "kpi_code": "sales.net_revenue"},
         },
     }
+    first_start = datetime(2026, 6, 17, tzinfo=UTC)
+    first_end = datetime(2026, 6, 23, 23, 59, 59, tzinfo=UTC)
+    second_start = datetime(2026, 6, 24, tzinfo=UTC)
+    second_end = datetime(2026, 6, 30, 23, 59, 59, tzinfo=UTC)
     history = (
-        ObservationFrame((_observation("90"), _observation("100", kind="previous"))),
-        ObservationFrame((_observation("80"), _observation("90", kind="previous"))),
+        ObservationFrame(
+            (
+                _observation("90", period_start=first_start, period_end=first_end),
+                _observation(
+                    "100", kind="previous", period_start=first_start, period_end=first_end
+                ),
+            )
+        ),
+        ObservationFrame(
+            (
+                _observation("80", period_start=second_start, period_end=second_end),
+                _observation(
+                    "90", kind="previous", period_start=second_start, period_end=second_end
+                ),
+            )
+        ),
     )
     rule = _rule(condition=condition, evidence=(), hypotheses=())
 
@@ -541,6 +699,25 @@ def test_persisted_condition_consumes_history_without_requiring_current_baseline
     )
 
     assert result.state == "matched"
+    assert [entry.path for entry in result.trace] == [
+        "$",
+        "$.history[0].predicate",
+        "$.history[1].predicate",
+    ]
+    assert [entry.outcome for entry in result.trace] == ["true", "true", "true"]
+    assert result.trace[1].as_dict()["resolved_values"] == {
+        "frame_period_start": "2026-06-17T00:00:00.000000Z",
+        "frame_period_end": "2026-06-23T23:59:59.000000Z",
+        "left": {
+            "operand": {"kpi_code": "sales.net_revenue", "type": "kpi"},
+            "value": "90",
+        },
+        "operator": "lt",
+        "right": {
+            "operand": {"kpi_code": "sales.net_revenue", "type": "previous"},
+            "value": "100",
+        },
+    }
 
 
 def test_irrelevant_observation_kind_does_not_change_confidence_or_fingerprint() -> None:
@@ -550,7 +727,8 @@ def test_irrelevant_observation_kind_does_not_change_confidence_or_fingerprint()
         value=Decimal("999"),
         period_start=WINDOW_START,
         period_end=WINDOW_END,
-        data_version=11,
+        data_version=999,
+        formula_version=2,
         kind="goal",
         quality_score=Decimal("0"),
         coverage=Decimal("0"),
@@ -630,9 +808,233 @@ def test_evidence_cannot_relabel_an_observation_from_another_kpi() -> None:
 
     result = evaluate_rule(_evaluation(rule=rule))
 
-    assert result.state == "skipped"
+    assert result.state == "failed"
     assert result.issue is not None
     assert result.issue.code == "invalid_rule_snapshot"
+
+
+def test_evidence_reference_must_use_the_same_kpi() -> None:
+    evidence = (
+        EvidenceSpec(
+            evidence_code="sales.invalid_cross_kpi_reference",
+            evidence_type="comparison",
+            kpi_code="sales.net_revenue",
+            observation_key="sales.net_revenue",
+            reference_key="inventory.zero_stock_rate",
+            direction="below",
+            relation="supports",
+            detail="Contrato inválido usado somente no teste.",
+        ),
+    )
+    inventory_observation = KPIObservation(
+        kpi_code="inventory.zero_stock_rate",
+        value=Decimal("5"),
+        period_start=WINDOW_START,
+        period_end=WINDOW_END,
+        data_version=11,
+    )
+    rule = _rule(
+        evidence=evidence,
+        hypotheses=(),
+        declared_kpis=("sales.net_revenue", "inventory.zero_stock_rate"),
+    )
+
+    result = evaluate_rule(
+        _evaluation(
+            rule=rule,
+            observations=(
+                _observation("80"),
+                _observation("100", kind="previous"),
+                inventory_observation,
+            ),
+        )
+    )
+
+    assert result.state == "failed"
+    assert result.issue is not None
+    assert result.issue.code == "invalid_rule_snapshot"
+
+
+def test_severity_ladder_never_deescalates_the_base_severity() -> None:
+    controls = {
+        "severity_ladder": [
+            {"threshold_pct": "1", "severity": "low"},
+            {"threshold_pct": "10", "severity": "medium"},
+        ]
+    }
+
+    result = evaluate_rule(_evaluation(rule=_rule(base_severity="high", controls=controls)))
+
+    assert result.state == "matched"
+    assert result.diagnostic is not None
+    assert result.diagnostic.severity == "high"
+
+
+def test_severity_ladder_is_anchored_to_the_primary_kpi() -> None:
+    controls = {
+        "severity_ladder": [
+            {"threshold_pct": "50", "severity": "critical"},
+        ]
+    }
+    evidence = (
+        EvidenceSpec(
+            evidence_code="inventory.zero_stock_comparison",
+            evidence_type="comparison",
+            kpi_code="inventory.zero_stock_rate",
+            observation_key="inventory.zero_stock_rate",
+            reference_key="previous:inventory.zero_stock_rate",
+            direction="above",
+            relation="context",
+            detail="Contexto de ruptura que não deve dirigir a severidade desta regra.",
+        ),
+        EvidenceSpec(
+            evidence_code="sales.revenue_drop",
+            evidence_type="comparison",
+            kpi_code="sales.net_revenue",
+            observation_key="sales.net_revenue",
+            reference_key="previous:sales.net_revenue",
+            direction="below",
+            relation="supports",
+            detail="Receita abaixo da referência.",
+        ),
+    )
+    inventory_current = KPIObservation(
+        kpi_code="inventory.zero_stock_rate",
+        value=Decimal("20"),
+        period_start=WINDOW_START,
+        period_end=WINDOW_END,
+        data_version=11,
+    )
+    inventory_previous = replace(
+        inventory_current,
+        value=Decimal("10"),
+        kind="previous",
+    )
+    rule = _rule(
+        evidence=evidence,
+        hypotheses=(),
+        declared_kpis=("sales.net_revenue", "inventory.zero_stock_rate"),
+        base_severity="low",
+        controls=controls,
+    )
+
+    result = evaluate_rule(
+        _evaluation(
+            rule=rule,
+            observations=(
+                _observation("80"),
+                _observation("100", kind="previous"),
+                inventory_current,
+                inventory_previous,
+            ),
+        )
+    )
+
+    assert result.state == "matched"
+    assert result.diagnostic is not None
+    assert result.diagnostic.severity == "low"
+
+
+def test_history_frames_must_be_distinct_chronological_and_non_overlapping() -> None:
+    duplicated = ObservationFrame((_observation("90"),))
+
+    with pytest.raises(DiagnosticEngineValidationError, match="strictly chronological"):
+        _evaluation(history=(duplicated, duplicated))
+
+
+def test_history_must_end_before_the_current_evaluation_window() -> None:
+    condition = {
+        "type": "persisted",
+        "periods": 2,
+        "predicate": {
+            "type": "compare",
+            "left": {"type": "kpi", "kpi_code": "sales.net_revenue"},
+            "op": "lt",
+            "right": {"type": "previous", "kpi_code": "sales.net_revenue"},
+        },
+    }
+    overlapping = ObservationFrame((_observation("90"),))
+
+    result = evaluate_rule(_evaluation(rule=_rule(condition=condition), history=(overlapping,)))
+
+    assert result.state == "skipped"
+    assert result.issue is not None
+    assert result.issue.code == "window_mismatch"
+
+
+def test_missing_history_periods_remain_semantic_in_the_fingerprint() -> None:
+    condition = {
+        "type": "persisted",
+        "periods": 2,
+        "predicate": {"type": "missing_data", "kpi_code": "sales.net_revenue"},
+    }
+    rule = _rule(condition=condition, evidence=(), hypotheses=(), actions=())
+
+    def unrelated_frame(start: datetime, end: datetime) -> ObservationFrame:
+        return ObservationFrame(
+            (
+                KPIObservation(
+                    kpi_code="inventory.zero_stock_rate",
+                    value=Decimal("1"),
+                    period_start=start,
+                    period_end=end,
+                    data_version=11,
+                ),
+            )
+        )
+
+    first_history = (
+        unrelated_frame(
+            datetime(2026, 6, 17, tzinfo=UTC),
+            datetime(2026, 6, 23, 23, 59, 59, tzinfo=UTC),
+        ),
+        unrelated_frame(
+            datetime(2026, 6, 24, tzinfo=UTC),
+            datetime(2026, 6, 30, 23, 59, 59, tzinfo=UTC),
+        ),
+    )
+    shifted_history = (
+        unrelated_frame(
+            datetime(2026, 6, 16, tzinfo=UTC),
+            datetime(2026, 6, 22, 23, 59, 59, tzinfo=UTC),
+        ),
+        unrelated_frame(
+            datetime(2026, 6, 23, tzinfo=UTC),
+            datetime(2026, 6, 29, 23, 59, 59, tzinfo=UTC),
+        ),
+    )
+
+    first = evaluate_rule(
+        _evaluation(rule=rule, observations=(_observation("80"),), history=first_history)
+    )
+    shifted = evaluate_rule(
+        _evaluation(rule=rule, observations=(_observation("80"),), history=shifted_history)
+    )
+
+    assert first.state == shifted.state == "matched"
+    assert first.fingerprint != shifted.fingerprint
+
+
+def test_empty_history_frames_are_rejected_at_the_contract_boundary() -> None:
+    with pytest.raises(DiagnosticEngineValidationError, match="must not be empty"):
+        ObservationFrame(())
+
+
+def test_rule_metadata_and_collection_sizes_are_bounded() -> None:
+    with pytest.raises(DiagnosticEngineValidationError, match="rationale exceeds"):
+        ActionReference(
+            action_code="sales.revenue_drop_review",
+            action_version=1,
+            rationale="x" * 1_001,
+        )
+
+    action = ActionReference(
+        action_code="sales.revenue_drop_review",
+        action_version=1,
+        rationale="Revisar a causa observável da queda.",
+    )
+    with pytest.raises(DiagnosticEngineValidationError, match="rule actions exceed"):
+        _rule(actions=(action,) * 17)
 
 
 def test_declared_kpi_order_is_canonicalized_before_definition_hashing() -> None:
@@ -697,25 +1099,64 @@ def test_canonicalization_has_a_small_golden_contract() -> None:
     )
 
 
+def test_canonicalization_and_evaluation_ignore_the_process_decimal_context() -> None:
+    payload = {"value": Decimal("123456789.12340000")}
+    condition = {
+        "type": "compare",
+        "left": {
+            "type": "pct_change",
+            "kpi_code": "sales.net_revenue",
+            "baseline": "previous",
+        },
+        "op": "lt",
+        "right": {"type": "fixed", "value": "0"},
+    }
+    evaluation = _evaluation(
+        rule=_rule(condition=condition),
+        observations=(_observation("2"), _observation("3", kind="previous")),
+    )
+
+    with localcontext() as context:
+        context.prec = 6
+        low_precision_json = canonical_json(payload)
+        low_precision_result = evaluate_rule(evaluation)
+    with localcontext() as context:
+        context.prec = 50
+        high_precision_json = canonical_json(payload)
+        high_precision_result = evaluate_rule(evaluation)
+
+    assert low_precision_json == high_precision_json == '{"value":"123456789.1234"}'
+    assert low_precision_result == high_precision_result
+
+
 def test_canonicalization_rejects_binary_float_and_non_finite_decimal() -> None:
     with pytest.raises(CanonicalizationError, match="float"):
         canonical_json({"value": 0.1})
     with pytest.raises(CanonicalizationError, match="non-finite"):
         canonical_json({"value": Decimal("NaN")})
+    with pytest.raises(CanonicalizationError, match="bounded representation"):
+        canonical_json({"value": Decimal("1E+1000")})
 
 
-def test_engine_module_has_no_infrastructure_or_nondeterministic_calls() -> None:
-    module_path = (
-        Path(__file__).parents[1] / "src" / "pharma_api" / "domain" / "diagnostics" / "engine.py"
-    )
-    tree = ast.parse(module_path.read_text(encoding="utf-8"))
+def test_engine_modules_have_no_infrastructure_or_nondeterministic_calls() -> None:
+    diagnostics_path = Path(__file__).parents[1] / "src" / "pharma_api" / "domain" / "diagnostics"
+    trees = [
+        ast.parse((diagnostics_path / filename).read_text(encoding="utf-8"))
+        for filename in ("engine.py", "engine_contracts.py")
+    ]
     imported = {
         alias.name
+        for tree in trees
         for node in ast.walk(tree)
         if isinstance(node, (ast.Import, ast.ImportFrom))
         for alias in node.names
     }
-    calls = {ast.unparse(node.func) for node in ast.walk(tree) if isinstance(node, ast.Call)}
+    calls = {
+        ast.unparse(node.func)
+        for tree in trees
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+    }
 
     assert not any(
         name.startswith(
