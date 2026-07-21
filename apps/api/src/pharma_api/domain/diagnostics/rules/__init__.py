@@ -12,6 +12,7 @@ from pharma_api.domain.diagnostics.rules.definitions import (
     deterministic_rule_id,
 )
 from pharma_api.domain.diagnostics.rules.inventory import INVENTORY_RULES
+from pharma_api.domain.diagnostics.rules.sales import SALES_RULES
 from pharma_api.domain.diagnostics.rules.validation import (
     RuleCatalogValidationError,
     catalog_hash,
@@ -28,6 +29,7 @@ __all__ = [
     "RULE_CATALOG_HASH",
     "RULE_CATALOG_MANIFEST",
     "RULE_COUNT",
+    "SALES_RULES",
     "GovernedRuleDefinition",
     "RuleCatalogValidationError",
     "catalog_hash",

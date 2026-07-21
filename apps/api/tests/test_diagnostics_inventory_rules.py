@@ -15,7 +15,8 @@ from pharma_api.domain.diagnostics.engine import (
     RuleEvaluationInput,
     evaluate_rule,
 )
-from pharma_api.domain.diagnostics.rules import RULE_BY_CODE, RULE_CATALOG
+from pharma_api.domain.diagnostics.rules import RULE_BY_CODE
+from pharma_api.domain.diagnostics.rules.inventory import INVENTORY_RULES
 
 TENANT_ID = UUID("10000000-0000-0000-0000-000000000101")
 COMPANY_ID = UUID("20000000-0000-0000-0000-000000000101")
@@ -283,6 +284,6 @@ def test_representative_result_hashes_are_golden_and_repeatable() -> None:
         assert first.result_hash == result_hash
 
 
-def test_rule_catalog_covers_all_golden_cases_exactly_once() -> None:
-    assert {case.rule_code for case in CASES} == {rule.code for rule in RULE_CATALOG}
+def test_inventory_slice_covers_all_golden_cases_exactly_once() -> None:
+    assert {case.rule_code for case in CASES} == {rule.code for rule in INVENTORY_RULES}
     assert len({case.rule_code for case in CASES}) == len(CASES)

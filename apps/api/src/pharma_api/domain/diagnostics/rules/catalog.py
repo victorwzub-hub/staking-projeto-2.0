@@ -7,6 +7,7 @@ from types import MappingProxyType
 
 from pharma_api.domain.diagnostics.rules.definitions import GovernedRuleDefinition
 from pharma_api.domain.diagnostics.rules.inventory import INVENTORY_RULES
+from pharma_api.domain.diagnostics.rules.sales import SALES_RULES
 from pharma_api.domain.diagnostics.rules.validation import (
     catalog_hash,
     catalog_manifest,
@@ -15,7 +16,7 @@ from pharma_api.domain.diagnostics.rules.validation import (
 )
 
 RULE_CATALOG: tuple[GovernedRuleDefinition, ...] = tuple(
-    sorted(INVENTORY_RULES, key=lambda rule: rule.code)
+    sorted((*INVENTORY_RULES, *SALES_RULES), key=lambda rule: rule.code)
 )
 validate_catalog(RULE_CATALOG)
 

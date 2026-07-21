@@ -20,16 +20,20 @@ from pharma_api.domain.diagnostics.rules import (
     validate_catalog,
     validate_rule,
 )
+from pharma_api.domain.diagnostics.rules.inventory import INVENTORY_RULES
+from pharma_api.domain.diagnostics.rules.sales import SALES_RULES
 from pharma_api.domain.diagnostics.rules.validation import forbidden_infrastructure_markers
 
-EXPECTED_CATALOG_HASH = "8417fe46225afc3990f2af0a0d4c95d8c8ac7b78294c40b48b3f349d0a4e52f7"
+EXPECTED_CATALOG_HASH = "eef532b9dede1bb51423005d935853679b3aa20df3dd10efc9b7c822d3e79915"
 
 
-def test_inventory_catalog_has_twenty_real_ordered_rules() -> None:
-    assert RULE_COUNT == 20
-    assert len(RULE_CATALOG) == 20
+def test_catalog_has_forty_real_ordered_rules() -> None:
+    assert RULE_COUNT == 40
+    assert len(RULE_CATALOG) == 40
+    assert len(INVENTORY_RULES) == 20
+    assert len(SALES_RULES) == 20
     assert [rule.code for rule in RULE_CATALOG] == sorted(rule.code for rule in RULE_CATALOG)
-    assert all(rule.domain == "inventory" for rule in RULE_CATALOG)
+    assert {rule.domain for rule in RULE_CATALOG} == {"inventory", "sales"}
     assert all(rule.status == "active" for rule in RULE_CATALOG)
 
 
@@ -39,7 +43,7 @@ def test_catalog_import_runs_full_validation_and_has_golden_hash() -> None:
     assert RULE_CATALOG_HASH == EXPECTED_CATALOG_HASH
     assert len(RULE_CATALOG_MANIFEST) == RULE_COUNT
     assert RULE_CATALOG_MANIFEST[0]["code"] == "inventory.excess_products"
-    assert RULE_CATALOG_MANIFEST[-1]["code"] == "inventory.weak_sell_through"
+    assert RULE_CATALOG_MANIFEST[-1]["code"] == "sales.units_sold_decline"
 
 
 def test_rule_index_is_read_only_and_complete() -> None:
