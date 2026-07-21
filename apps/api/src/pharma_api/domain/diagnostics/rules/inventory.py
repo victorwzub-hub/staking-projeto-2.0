@@ -354,8 +354,7 @@ INVENTORY_RULES: tuple[GovernedRuleDefinition, ...] = tuple(
                     "analíticos anteriores."
                 ),
                 summary=(
-                    "A ruptura permaneceu positiva no período atual e nos dois "
-                    "períodos anteriores."
+                    "A ruptura permaneceu positiva no período atual e nos dois períodos anteriores."
                 ),
                 severity="high",
                 primary_kpi="inventory.zero_stock_rate",

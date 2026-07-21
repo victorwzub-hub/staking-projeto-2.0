@@ -234,7 +234,6 @@ def test_persisted_rule_is_indeterminate_without_two_history_frames() -> None:
     assert result.issue.code == "condition_not_evaluable"
 
 
-
 def test_recurring_stockout_does_not_match_after_current_recovery() -> None:
     case = next(item for item in CASES if item.rule_code == "inventory.recurring_stockout")
     matched = _evaluation(case, matched=True)
@@ -257,6 +256,7 @@ def test_recurring_stockout_does_not_match_after_current_recovery() -> None:
     assert result.diagnostic is None
     assert result.evidence == ()
     assert result.recommendations == ()
+
 
 def test_representative_result_hashes_are_golden_and_repeatable() -> None:
     expected = {
