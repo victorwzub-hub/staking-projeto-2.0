@@ -48,7 +48,7 @@ WINDOW_END = datetime(2026, 7, 14, 23, 59, 59, tzinfo=UTC)
 EVALUATED_AT = datetime(2026, 7, 15, 8, tzinfo=UTC)
 EXPECTED_INVENTORY_SLICE_HASH = "8417fe46225afc3990f2af0a0d4c95d8c8ac7b78294c40b48b3f349d0a4e52f7"
 EXPECTED_SALES_SLICE_HASH = "b6bf16a32887f201481dfa085a2078afb9510aa42e39c1777ec532ce36eeb110"
-EXPECTED_GLOBAL_HASH = "eef532b9dede1bb51423005d935853679b3aa20df3dd10efc9b7c822d3e79915"
+EXPECTED_GLOBAL_HASH = "560d09afde801699b15eae70462ae101c587d95f4d583b40a4128ab72c2424bb"
 
 ObservationKind = Literal[
     "current",
@@ -578,13 +578,13 @@ def test_sales_slice_has_explicit_golden_hash() -> None:
 
 def test_full_catalog_is_valid_ordered_and_has_the_new_golden_hash() -> None:
     validate_catalog(RULE_CATALOG)
-    assert len(RULE_CATALOG) == 40
+    assert len(RULE_CATALOG) == 120
     assert RULE_CATALOG_HASH == EXPECTED_GLOBAL_HASH
     assert [rule.code for rule in RULE_CATALOG] == sorted(rule.code for rule in RULE_CATALOG)
-    assert len({rule.code for rule in RULE_CATALOG}) == 40
-    assert len({rule.rule_definition_id for rule in RULE_CATALOG}) == 40
-    assert len({rule.governance_hash for rule in RULE_CATALOG}) == 40
-    assert len({rule.to_snapshot().definition_hash for rule in RULE_CATALOG}) == 40
+    assert len({rule.code for rule in RULE_CATALOG}) == 120
+    assert len({rule.rule_definition_id for rule in RULE_CATALOG}) == 120
+    assert len({rule.governance_hash for rule in RULE_CATALOG}) == 120
+    assert len({rule.to_snapshot().definition_hash for rule in RULE_CATALOG}) == 120
 
 
 def test_catalog_is_stable_across_python_hash_seeds() -> None:

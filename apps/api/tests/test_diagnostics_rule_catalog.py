@@ -21,19 +21,34 @@ from pharma_api.domain.diagnostics.rules import (
     validate_rule,
 )
 from pharma_api.domain.diagnostics.rules.inventory import INVENTORY_RULES
+from pharma_api.domain.diagnostics.rules.margin import MARGIN_RULES
+from pharma_api.domain.diagnostics.rules.operations import OPERATIONS_RULES
+from pharma_api.domain.diagnostics.rules.purchases import PURCHASES_RULES
 from pharma_api.domain.diagnostics.rules.sales import SALES_RULES
+from pharma_api.domain.diagnostics.rules.suppliers import SUPPLIERS_RULES
 from pharma_api.domain.diagnostics.rules.validation import forbidden_infrastructure_markers
 
-EXPECTED_CATALOG_HASH = "eef532b9dede1bb51423005d935853679b3aa20df3dd10efc9b7c822d3e79915"
+EXPECTED_CATALOG_HASH = "560d09afde801699b15eae70462ae101c587d95f4d583b40a4128ab72c2424bb"
 
 
-def test_catalog_has_forty_real_ordered_rules() -> None:
-    assert RULE_COUNT == 40
-    assert len(RULE_CATALOG) == 40
+def test_catalog_has_one_hundred_twenty_real_ordered_rules() -> None:
+    assert RULE_COUNT == 120
+    assert len(RULE_CATALOG) == 120
     assert len(INVENTORY_RULES) == 20
+    assert len(MARGIN_RULES) == 20
+    assert len(OPERATIONS_RULES) == 20
+    assert len(PURCHASES_RULES) == 20
     assert len(SALES_RULES) == 20
+    assert len(SUPPLIERS_RULES) == 20
     assert [rule.code for rule in RULE_CATALOG] == sorted(rule.code for rule in RULE_CATALOG)
-    assert {rule.domain for rule in RULE_CATALOG} == {"inventory", "sales"}
+    assert {rule.domain for rule in RULE_CATALOG} == {
+        "inventory",
+        "margin",
+        "operations",
+        "purchases",
+        "sales",
+        "suppliers",
+    }
     assert all(rule.status == "active" for rule in RULE_CATALOG)
 
 
@@ -43,7 +58,7 @@ def test_catalog_import_runs_full_validation_and_has_golden_hash() -> None:
     assert RULE_CATALOG_HASH == EXPECTED_CATALOG_HASH
     assert len(RULE_CATALOG_MANIFEST) == RULE_COUNT
     assert RULE_CATALOG_MANIFEST[0]["code"] == "inventory.excess_products"
-    assert RULE_CATALOG_MANIFEST[-1]["code"] == "sales.units_sold_decline"
+    assert RULE_CATALOG_MANIFEST[-1]["code"] == "suppliers.top5_concentration_above_network"
 
 
 def test_rule_index_is_read_only_and_complete() -> None:
