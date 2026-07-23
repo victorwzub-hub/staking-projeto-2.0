@@ -77,6 +77,10 @@ wait_for_redis_key() {
   echo "Worker probe key $key was not produced." >&2; return 1
 }
 
+normalize_revision_set() {
+  tr -d '\r' | sed '/^[[:space:]]*$/d' | LC_ALL=C sort -u
+}
+
 echo "+ docker compose config"
 "${COMPOSE[@]}" config >/dev/null
 
@@ -120,13 +124,34 @@ curl --silent --show-error --fail "http://127.0.0.1:${API_PORT:-8000}/api/v1/rea
 # Verify migrations can be executed repeatedly under the advisory lock.
 "${COMPOSE[@]}" run --rm migrate
 "${COMPOSE[@]}" run --rm migrate
-migration_head="$(${COMPOSE[@]} exec -T postgres psql \
-  --username "${POSTGRES_ADMIN_USER:-pharma_admin}" \
-  --dbname "${POSTGRES_DB:-pharma}" \
-  --tuples-only --no-align \
-  --command "SELECT version_num FROM alembic_version" | tr -d '\r')"
-[[ "$migration_head" == "20260718_0004" ]] || {
-  echo "Unexpected Alembic head: $migration_head" >&2
+expected_migration_heads="$(
+  "${COMPOSE[@]}" exec -T api python - <<'PY' | normalize_revision_set
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+
+config = Config("/app/alembic.ini")
+for revision in ScriptDirectory.from_config(config).get_heads():
+    print(revision)
+PY
+)"
+database_migration_heads="$(
+  "${COMPOSE[@]}" exec -T postgres psql \
+    --username "${POSTGRES_ADMIN_USER:-pharma_admin}" \
+    --dbname "${POSTGRES_DB:-pharma}" \
+    --tuples-only --no-align \
+    --command "SELECT version_num FROM alembic_version ORDER BY version_num" \
+    | normalize_revision_set
+)"
+[[ -n "$expected_migration_heads" ]] || {
+  echo "Alembic code head discovery returned no revisions." >&2
+  exit 1
+}
+[[ "$database_migration_heads" == "$expected_migration_heads" ]] || {
+  printf '%s\n%s\n%s\n%s\n' \
+    "Alembic head mismatch." \
+    "Expected code head(s): $expected_migration_heads" \
+    "Database head(s): $database_migration_heads" \
+    "The database must match the migration graph packaged in the API image." >&2
   exit 1
 }
 
